@@ -1,0 +1,131 @@
+[build-system]
+    requires = [
+        "setuptools>=64", # >=64 required for setuptools-scm
+        "setuptools-scm>=8.0", # automatically manages version number from git
+        "wheel"
+        ]
+    build-backend = "setuptools.build_meta"
+
+[project]
+    name = "pychfpga"
+    description = "Operates array of FPGA boards used for implementing small and large scale radiotelescopes"
+    classifiers= [
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+        "Topic :: Scientific/Engineering :: Astronomy",
+        "Intended Audience :: Science/Research",
+        ]
+    dynamic=["version"]
+    authors = [
+        { name = "McGill University"},
+        { name = "JF Cliche", email = "vhdl@jfcliche.com" }
+        ]
+    requires-python = "==3.8.*"
+    readme = "README"
+
+    dependencies = [
+        "setuptools>=64", # required by setuptools-scm
+        "setuptools-scm>=8.0",
+
+        # Private packages
+        "wtl.namespace @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.namespace.git",  # testing 1.1.0
+        "wtl.metrics @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.metrics.git",  # testing 1.1
+        "wtl.log @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.log.git",  # testing 1.1.0
+        "wtl.rest @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.rest.git@1.2.0",
+        "wtl.config @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.config.git@1.1.1",
+        "wtl.h5-archive @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.h5-archive.git",   # was @v1.0.3, testing 1.1.0
+
+        # PyPi packages
+        "aiohttp",  # new, using 3.7.2
+        "nest_asyncio", # new, using 1.4.3 (Tuber)
+        "ujson",  # new , using 3.17.2 (Tuber)
+
+        "numpy",  # was ==1.15.2, testing 1.19.2
+        "h5py",  # was ==2.8.0, testing 3.0.0
+        "matplotlib",  # was ==2.2.3, now testing 3.3.2
+        "PyYAML",  # was 3.13, testing 5.3.1
+        "psutil",  # was ==5.4.7, now testing 5.7.3
+        "netifaces",   # was not specified, now using 0.10.9
+        "zeroconf==0.34.3",  # new, was tested with 0.34.3
+        ]
+
+[project.urls]
+    # Homepage = "https://example.com"
+    Documentation = "https://winterlandcosmology.bitbucket.io/pychfpga/jfc/dev"
+    Repository = "https://bitbucket.com/winterlandcosmology/pychfpga.git"
+    # Issues = "https://github.com/me/spam/issues"
+    # Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+
+# [tool.setuptools]
+# packages = ["pychfpga"]
+
+[tool.setuptools.package-data]
+
+    pychfpga = ["*.bit", "*.yaml"]
+
+
+[tool.setuptools.packages.find]
+    where = ["."]  # Don't include packages in qc or docs
+    exclude = ["tests", "docs", "old-scripts"]
+    namespaces = false
+
+[tool.setuptools_scm]
+    version_file = "pychfpga/_version_scm.py"
+
+[tool.pylint.main]
+# recursive = true
+# source-roots = ["pychfpga/"]
+py-version =  "3.8"  # qc had issues with 3.7 and 3.9
+ignore = ["unused"]
+
+# jobs will specify the number of cores to run pylint with
+# jobs = 0 will autodetect the number of available cores
+
+jobs = 0
+
+[tool.pylint."messages control"]
+disable = ["raw-checker-failed",
+            "possibly-used-before-assignment",
+            "bad-inline-option",
+            "locally-disabled",
+            "file-ignored",
+            "suppressed-message",
+            "useless-suppression",
+            "deprecated-pragma",
+            "use-implicit-booleaness-not-comparison-to-string",
+            "use-implicit-booleaness-not-comparison-to-zero",
+            "use-symbolic-message-instead"
+            ]
+errors-only = true
+
+
+
+[project.optional-dependencies]
+    docs = [
+        "sphinx",
+        "sphinx_rtd_theme",
+        "sphinxcontrib.restbuilder",  # used for debugging outputs
+        ]
+
+    qc = [
+        # Private packages
+        "wtl.pytest-xreport @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.pytest-xreport.git@jfc/dev",
+        "labpy @ git+ssh://git@bitbucket.org/winterlandcosmology/labpy.git@qc",
+
+        # Pypi packages
+        "numpy",
+        "matplotlib",
+        "py", # no longer a dependency brought in by pytest, but we need it
+        "prettytable",
+
+        # test-specific packages
+        "pyserial", # (tested with 0.0.97 on Ubuntu) for memtest
+        "pyftdi", # (tested with 0.53.3 on Ubuntu) tested with for PLL programming. Newer versions have another interface
+
+        ]
+
+[project.scripts]
+    fpga_master = "pychfpga.fpga_master:main"
+    chime_gps = "pychfpga.gps:main"
+    chime_raw_acq = "pychfpga.raw_acq:main"
+    chime_rx_ps = "pychfpga.ps:main"
