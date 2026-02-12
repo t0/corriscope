@@ -7,7 +7,7 @@
     build-backend = "setuptools.build_meta"
 
 [project]
-    name = "pychfpga"
+    name = "corriscope"
     description = "Operates array of FPGA boards used for implementing small and large scale radiotelescopes"
     classifiers= [
         "Programming Language :: Python :: 3",
@@ -47,21 +47,16 @@
         "psutil",  # was ==5.4.7, now testing 5.7.3
         "netifaces",   # was not specified, now using 0.10.9
         "zeroconf==0.34.3",  # new, was tested with 0.34.3
+        "PyQt5",
+        "pyqtgraph"
         ]
 
-[project.urls]
-    # Homepage = "https://example.com"
-    Documentation = "https://winterlandcosmology.bitbucket.io/pychfpga/jfc/dev"
-    Repository = "https://bitbucket.com/winterlandcosmology/pychfpga.git"
-    # Issues = "https://github.com/me/spam/issues"
-    # Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
-
 # [tool.setuptools]
-# packages = ["pychfpga"]
+# packages = ["corriscope"]
 
 [tool.setuptools.package-data]
 
-    pychfpga = ["*.bit", "*.yaml"]
+    corriscope = ["*.bit", "*.yaml"]
 
 
 [tool.setuptools.packages.find]
@@ -70,11 +65,11 @@
     namespaces = false
 
 [tool.setuptools_scm]
-    version_file = "pychfpga/_version_scm.py"
+    version_file = "corriscope/_version_scm.py"
 
 [tool.pylint.main]
 # recursive = true
-# source-roots = ["pychfpga/"]
+# source-roots = ["corriscope/"]
 py-version =  "3.8"  # qc had issues with 3.7 and 3.9
 ignore = ["unused"]
 
@@ -123,9 +118,3 @@ errors-only = true
         "pyftdi", # (tested with 0.53.3 on Ubuntu) tested with for PLL programming. Newer versions have another interface
 
         ]
-
-[project.scripts]
-    fpga_master = "pychfpga.fpga_master:main"
-    chime_gps = "pychfpga.gps:main"
-    chime_raw_acq = "pychfpga.raw_acq:main"
-    chime_rx_ps = "pychfpga.ps:main"
