@@ -58,11 +58,7 @@ from corriscope.hardware import Motherboard, Crate
 # Import platform-specific hardware-handling classes that are to be supported by fpga_array.
 # By importing those, we make sure they are registered in the hardware map.
 # Once registered, the we can find classes based on model numbers.
-# from corriscope.hardware.ice import IceBoard, IceCrate
-# from corriscope.hardware.zcu111 import ZCU111
 from corriscope.hardware.crs import CRS
-# from corriscope.hardware.zuboard import ZUBoard
-from corriscope.hardware.Agilent_N5764A import AgilentN5764A
 
 
 
@@ -5386,7 +5382,8 @@ def add_fpga_array_arguments(parser):
                         '--prog or prog 1: programs the FPGA only if not already programmed (requires --mode). '
                         '--prog 2: always program the FPGA (requires --mode).')
     parser.add_argument('-b', '--bitfile',   type=str, help='Folder in which to search for FPGA bitstream or full path to a bistream to use explicitely (mode must still be specified)')
-    parser.add_argument('-m', '--mode',      type=str, help="Operational mode ('shuffle16', 'shuffle256', etc.). When specified, the FPGA is programmed with the proper firmware bitstream (unless blocked with --prog 0) and the mode is initialized (unless blocked with -open 0). If not specified, only a connection to the platform is established")
+    parser.add_argument('--firmware-path',   type=str, help='Path to directory containing FPGA firmware bitstreams. Can also be set via CORRISCOPE_FIRMWARE_PATH environment variable.')
+    parser.add_argument('-m', '--mode',      type=str, help="Operational mode ('corr8', 'corr32', 'corr64', etc.). When specified, the FPGA is programmed with the proper firmware bitstream (unless blocked with --prog 0) and the mode is initialized (unless blocked with -open 0). If not specified, only a connection to the platform is established")
     parser.add_argument('--init',      type=int, nargs='?', const=None,
                         help='Overrides FPGA initialization level'
                         '--init 0: only connect to platform'
@@ -5453,15 +5450,10 @@ def parse_args_as_dict(parser, *args, **kwargs):
 # Create Power Supply array
 def PSArray(power_supplies=[]):
     """
+    Power supply array creation - currently disabled for CRS-only operation.
     """
-    if not power_supplies:
-        return Ccoll([])
-    if isinstance(power_supplies, list):
-        ps = Ccoll(AgilentN5764A(hostname=hostname) for hostname in power_supplies)
-        ps.open()
-        return ps
-    else:
-        raise TypeError('Wrong type to PSArray')
+    # Power supply support removed - CRS boards do not require external power supply control
+    raise NotImplementedError
 
 
 def create_fpga_array(args=None):
