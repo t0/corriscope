@@ -1,6 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: corriscope
-Version: 0.1.dev2+gbd88bc657.d20260212
+Version: 0.1.dev4+gef2dd9170.d20260219
 Summary: Operates array of FPGA boards used for implementing small and large scale radiotelescopes
 Author: McGill University
 Author-email: JF Cliche <vhdl@jfcliche.com>
@@ -8,7 +8,7 @@ Classifier: Programming Language :: Python :: 3
 Classifier: Operating System :: OS Independent
 Classifier: Topic :: Scientific/Engineering :: Astronomy
 Classifier: Intended Audience :: Science/Research
-Requires-Python: ==3.8.*
+Requires-Python: ==3.12.*
 Requires-Dist: setuptools>=64
 Requires-Dist: setuptools-scm>=8.0
 Requires-Dist: wtl.namespace @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.namespace.git
