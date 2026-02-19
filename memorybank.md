@@ -1,3 +1,209 @@
+# February 19, 2026
+
+## Session Overview
+Establishing CRS board connection and cleaning up legacy hardware support. Focus on making `corriscope` CRS-only and implementing external firmware path configuration.
+
+## Current Objectives
+
+### Primary Goal: Establish CRS Board Connection
+After the import migration from `pychfpga` to `corriscope`, we need to verify that CRS board connection functionality is intact and working properly.
+
+### Secondary Goals:
+1. **Remove non-CRS hardware support** - Clean up legacy code for ICE boards, ZCU111, and other unsupported platforms
+2. **External firmware configuration** - Move FPGA bitstreams out of Git LFS and implement configurable firmware paths
+3. **Verify supporting modules** - Ensure network_utils, mdns_discovery, and CRS hardware classes are functional
+
+## CRS Board Connection Architecture
+
+### Connection Flow
+The CRS board connection in `corriscope` follows this sequence:
+
+1. **POCKET_CORRELATOR initialization**
+   - Accepts `hwm` parameter (e.g., `'crs 0016'` for CRS board serial number 0016)
+   - Extracts serial number from hwm string
+   - Calls `find_best_interface()` from `network_utils.py` to discover board
+   - Verifies network settings with `verify_network_settings()`
+   - Ensures UDP buffer sizes and MTU are configured for high-rate data
+
+2. **FPGAArray initialization**
+   - Inherits from FPGAArray base class
+   - Passes `hwm` and `mode='corr8'` to parent
+   - FPGAArray processes hardware map string
+   - Discovers boards via mDNS if serial number provided
+   - Opens platform connection (ARM processor communication)
+   - Initializes FPGA firmware and creates firmware objects
+
+3. **Hardware Discovery**
+   - Uses `mdns_discovery.py` for network-based board discovery
+   - Resolves serial numbers to IP addresses
+   - Validates board presence with ping/tuber requests
+   - Auto-discovers mezzanines and hardware configuration
+
+### Key Components
+
+**POCKET_CORRELATOR** (`pocket_correlator.py`)
+- Wrapper class for simplified CRS board operation
+- Provides high-level methods for data capture
+- Implements gain computation and calibration
+- Handles correlator configuration and data streaming
+
+**FPGAArray** (`fpga_array.py`)
+- Base class for hardware array management
+- Handles async initialization and discovery
+- Manages multiple boards and crates
+- Provides hardware abstraction layer
+
+**Supporting Modules:**
+- `network_utils.py` - Network interface selection and UDP buffer configuration
+- `mdns_discovery.py` - mDNS-based hardware discovery
+- `hardware/crs/` - CRS-specific hardware implementation
+- `fpga_firmware/` - FPGA bitstream loading and firmware interface
+
+## Completed Work (February 19, 2026 Session)
+
+### Phase 1: Verification and Cleanup
+1. ✓ Reviewed CRS connection implementation in `pocket_correlator.py` and `fpga_array.py`
+2. ✓ Verified `network_utils.py` - Contains all required functions for network configuration
+3. ✓ Verified `mdns_discovery.py` - Functional mDNS discovery implementation
+4. ✓ Confirmed CRS hardware class exists in `hardware/crs/`
+5. ✓ Removed non-CRS hardware imports from `fpga_array.py`:
+   - Removed `from corriscope.hardware.ice import IceBoard, IceCrate`
+   - Removed `from corriscope.hardware.zcu111 import ZCU111`
+   - Removed `from corriscope.hardware.zuboard import ZUBoard`
+   - Removed `from corriscope.hardware.Agilent_N5764A import AgilentN5764A`
+6. ✓ Removed `corriscope/hardware/mezzanine.py` file
+7. ✓ Removed mezzanine import from `corriscope/hardware/__init__.py`
+8. ✓ Disabled PSArray function (now raises NotImplementedError)
+9. ⏳ Remove support for PROBER and other ICE-specific modules
+
+### Phase 2: Firmware Path Configuration (Partial) ✓
+1. ✓ Added `--firmware-path` argument to argparse in `fpga_array.py`
+2. ✓ Updated help text for `--mode` to reflect CRS-specific modes (corr8, corr32, corr64)
+3. ⏳ **Still needed:** Implement firmware path resolution in CRS hardware class
+4. ⏳ **Still needed:** Add environment variable support (`CORRISCOPE_FIRMWARE_PATH`)
+5. ⏳ **Still needed:** Update POCKET_CORRELATOR to accept and pass firmware_path parameter
+
+### Phase 3: Testing Infrastructure ✓
+1. ✓ Created `test_crs_connection.py` - comprehensive test script
+2. ✓ Tests imports, network settings, mDNS discovery, and POCKET_CORRELATOR availability
+3. ✓ Made executable with proper command-line interface
+4. ✓ **All import tests passing!**
+
+### Dependencies Fixed
+1. ✓ Added `freetype-py` to `pyproject.toml` dependencies
+2. ✓ Installed freetype-py package for SSD1306 display support
+3. ✓ Upgraded required python version to 3.12 
+
+## Known Issues
+
+### ⚠️ PSArray NotImplementedError
+The `PSArray()` function in `fpga_array.py` now raises `NotImplementedError` since power supply support was removed for CRS-only operation. This may break the `create_fpga_array()` function which still tries to instantiate PSArray. 
+
+**Impact:** This could prevent CRS board connection if `create_fpga_array()` is used.
+
+**Solution**: for `corr8`, do nothing. For `corr32` and `corr64`, need to integrate module `psucontrol` when it is ready to be deployed.
+
+## Remaining Work
+
+### Files/Directories Still to Remove:
+- `corriscope/hardware/ice/` - ICE board support directory (if exists)
+- `corriscope/hardware/zcu111.py` - ZCU111 support file (if exists)
+- `corriscope/hardware/zuboard.py` - ZUBoard support file (if exists)
+- Any ICE-specific firmware in `fpga_firmware/` directory
+
+### Implementation Tasks:
+1. **Fix PSArray issue** - Resolve NotImplementedError in create_fpga_array()
+2. Complete firmware path resolution in `corriscope/hardware/crs/crs.py`
+3. Add environment variable support (`CORRISCOPE_FIRMWARE_PATH`)
+4. Update `POCKET_CORRELATOR` to accept and pass firmware_path parameter
+5. Create firmware directory structure documentation
+6. Update README with firmware configuration instructions
+7. Add power supply support with `psucontrol`
+
+### Testing Tasks:
+1. Test CRS board connection with physical hardware
+2. Validate firmware loading from external path
+3. Create pytest test suite for CRS connection
+4. Add CI/CD integration for automated testing
+
+### Next Session Priorities:
+1. **Fix PSArray NotImplementedError** - Critical for board connection
+2. Complete firmware path implementation in CRS hardware class
+3. Remove remaining non-CRS hardware files
+4. Test with physical CRS hardware
+5. Create comprehensive usage documentation
+
+## Hardware Support Removal Plan
+
+### Files/Directories to Remove:
+- `corriscope/hardware/ice/` - ICE board support
+- `corriscope/hardware/zcu111.py` - ZCU111 support  
+- `corriscope/hardware/zuboard.py` - ZUBoard support
+- `corriscope/hardware/mezzanine.py` - Mezzanine support
+- Any ICE-specific firmware in `fpga_firmware/`
+
+### Code to Clean:
+- Remove ICE/ZCU111/ZUBoard imports from `fpga_array.py`
+- Remove ICE-specific initialization code
+- Remove ICE-specific command-line arguments
+- Update hardware map processing to CRS-only
+
+### Files to Keep:
+- `corriscope/hardware/crs/` - CRS board implementation
+- `corriscope/hardware/motherboard.py` - Base classes
+- `corriscope/hardware/crate.py` - Crate abstraction
+- All I2C device drivers (used by CRS)
+
+## Firmware Path Configuration Design
+
+### Requirements:
+- FPGA bitstreams no longer stored in Git repository
+- User must specify path to firmware directory
+- Support for multiple firmware versions
+- Clear error messages if firmware not found
+
+### Implementation Approach:
+1. Add `--firmware-path` argument to argparse in `fpga_array.py`
+2. Pass firmware path through to bitstream loading functions
+3. Update `set_fpga_bitstream_async()` to use custom path
+4. Provide sensible defaults (e.g., `./firmware/`, `~/corriscope_firmware/`)
+5. Environment variable support: `CORRISCOPE_FIRMWARE_PATH`
+
+### Expected Directory Structure:
+```
+firmware/
+├── crs/
+│   ├── corr8/
+│   │   └── crs_corr8.bit
+│   ├── corr32/
+│   │   └── crs_corr32.bit
+│   ├── corr64/
+│   │   └── crs_corr64.bit
+│   └── ...
+└── README.md
+```
+
+## Progress Tracking
+
+### Completed:
+- ✓ Import migration from pychfpga to corriscope
+- ✓ Understanding of CRS connection architecture
+- ✓ Identification of legacy hardware to remove
+- ✓ Design of firmware path configuration
+
+### In Progress:
+- ⏳ Verification of supporting modules
+- ⏳ Removal of non-CRS hardware support
+- ⏳ Implementation of firmware path configuration
+
+### Next Session:
+- Test CRS board connection with physical hardware
+- Validate firmware loading from external path
+- Create comprehensive usage documentation
+- Update GUI application to use new configuration
+
+---
+
 # February 12, 2026
 
 ## Session Overview
