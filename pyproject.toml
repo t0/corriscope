@@ -20,7 +20,7 @@
         { name = "McGill University"},
         { name = "JF Cliche", email = "vhdl@jfcliche.com" }
         ]
-    requires-python = "==3.8.*"
+    requires-python = "==3.12.*"
     readme = "README"
 
     dependencies = [
@@ -48,7 +48,8 @@
         "netifaces",   # was not specified, now using 0.10.9
         "zeroconf==0.34.3",  # new, was tested with 0.34.3
         "PyQt5",
-        "pyqtgraph"
+        "pyqtgraph",
+        "freetype-py"  # Required for SSD1306 display support
         ]
 
 # [tool.setuptools]
