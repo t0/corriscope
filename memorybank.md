@@ -1,3 +1,59 @@
+# March 17, 2026
+
+## Session Overview
+**SUCCESS:** CRS board connection fully operational. Fixed critical firmware loading and async execution issues.
+
+## Completed Work
+
+### Critical Fixes ✓
+
+1. **Firmware Path Handling** (`fpga_bitstream.py`)
+   - Fixed absolute path support in `FPGABitstream.get_bitstream()`
+   - Paths like `/home/lab/Codes/bitstreams` now work correctly
+
+2. **Firmware Class Registration** (`fpga_firmware/__init__.py`)
+   - Added `from .chfpga import chFPGA` import
+   - Firmware discovery now finds CRS modes (corr4, corr8, corr32, corr64)
+
+3. **Async/Await Execution** (`fpga_array.py`, `ccoll.py`)
+   - Made `set_operational_mode()` async with proper await
+   - Fixed event loop detection in `Ccoll.__call__()`
+   - Prevents "event loop already running" errors
+
+4. **Test Logging** (`test_crs_connection.py`)
+   - Added `--log-level` argument for debug output
+   - Shows detailed connection and firmware loading progress
+
+### Test Results ✓
+
+**CRS Board SN0110 Successfully Connected:**
+- ✓ All imports passing
+- ✓ Network settings configured
+- ✓ Firmware loaded from external path
+- ✓ FPGA programmed and initialized
+- ✓ Communication established
+
+### Usage
+
+```bash
+# Basic connection
+python tests/test_crs_connection.py --serial 0110 --firmware-path /path/to/firmware
+
+# With debug logging
+python tests/test_crs_connection.py --serial 0110 --firmware-path /path/to/firmware --log-level DEBUG
+```
+
+### Files Modified
+
+- `corriscope/fpga_firmware/fpga_bitstream.py`
+- `corriscope/fpga_firmware/__init__.py`
+- `corriscope/fpga_firmware/chfpga/f_engine/chan.py`
+- `corriscope/fpga_array.py`
+- `corriscope/common/ccoll.py`
+- `tests/test_crs_connection.py`
+
+---
+
 # February 19, 2026
 
 ## Session Overview

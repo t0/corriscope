@@ -113,13 +113,14 @@ class FPGAFirmware():
         elif len(fw) > 1:
             raise RuntimeError(f'Found multiple matches for firmware mode {mode} and platform {platform_name}')
         fw_cls, pf_info = fw[0]
-        # bs = cls.get_bitstream_object(bitfile_override or pf_info.pop('firmware_url'), folder=folder_override)
+
         if bitfile_override is not None and os.path.isdir(bitfile_override):
             if folder_override is None:
                 folder_override =  bitfile_override
                 bitfile_override = None
             else:
                 raise RuntimeError(f'Search folder is already specified; bitstream_override must point to a file.')
+            
         url = bitfile_override or pf_info.pop('firmware_url')
         bs = FPGABitstream.get_bitstream(url, folder=folder_override)
         return fw_cls, bs, pf_info

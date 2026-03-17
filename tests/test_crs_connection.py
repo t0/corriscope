@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import sys
+import logging
 
 def test_imports():
     """Test that all required modules can be imported."""
@@ -91,64 +92,54 @@ def test_network_settings():
         return False
 
 
-def test_crs_discovery(serial_number):
-    """Test CRS board discovery via mDNS."""
+def test_program_crs(serial_number, mode='corr8', firmware_path=None):
+    """Test CRS board programming using FPGAArray."""
     print("=" * 60)
-    print(f"Testing CRS board discovery (SN {serial_number})...")
-    print("=" * 60)
-    
-    try:
-        from corriscope.mdns_discovery import mdns_resolve
-        
-        hostname = f'crs{serial_number.zfill(4)}.local'
-        print(f"Looking for {hostname}...")
-        
-        ip_address = mdns_resolve(hostname, timeout=5)
-        
-        if ip_address:
-            print(f"✓ Found CRS board at {ip_address}")
-            return True, ip_address
-        else:
-            print(f"✗ CRS board {hostname} not found via mDNS")
-            print("  Make sure:")
-            print("  1. The CRS board is powered on")
-            print("  2. The CRS board is connected to the network")
-            print("  3. mDNS/Avahi is running on this system")
-            return False, None
-            
-    except Exception as e:
-        print(f"✗ Error during CRS board discovery: {e}")
-        return False, None
-
-
-def test_pocket_correlator_init(serial_number, firmware_path=None):
-    """Test POCKET_CORRELATOR initialization (without hardware)."""
-    print("=" * 60)
-    print("Testing POCKET_CORRELATOR initialization...")
+    print(f"Testing CRS board programming (SN {serial_number})...")
     print("=" * 60)
     
     try:
-        from corriscope.pocket_correlator import POCKET_CORRELATOR
+        from corriscope.fpga_array import FPGAArray
         
         hwm = f'crs {serial_number}'
-        print(f"Attempting to create POCKET_CORRELATOR with hwm='{hwm}'")
+        print(f"Creating FPGAArray with hwm='{hwm}', mode='{mode}'")
         
         if firmware_path:
             print(f"Using firmware path: {firmware_path}")
+        else:
+            print("No firmware path specified - will use default locations")
         
-        # Note: This will likely fail without actual hardware, but we can test
-        # that the initialization code runs without import errors
-        print("\nNote: This test requires actual CRS hardware to complete successfully.")
-        print("The test will verify that the initialization code can run.")
+        # Build FPGAArray arguments
+        fpga_args = {
+            'hwm': hwm,
+            'mode': mode,
+            'prog': 2,  # Force programming
+            'stderr_log_level': 'debug',  # Enable debug logging
+        }
         
-        # We won't actually create the object without hardware confirmation
-        print("\n✓ POCKET_CORRELATOR class is available and can be instantiated")
-        print("  (Full initialization requires physical hardware)")
+        if firmware_path:
+            fpga_args['bitfile'] = firmware_path
+        
+        print("\nAttempting to initialize and program the FPGA...")
+        
+        # Create and initialize the FPGAArray
+        ca = FPGAArray(**fpga_args)
+        
+        # If we get here, initialization was successful
+        print(f"\n✓ Successfully created FPGAArray with {len(ca.ib)} board(s)")
+        
+        if ca.ib:
+            for ib in ca.ib:
+                print(f"  - Board: {ib}")
+                print(f"    Serial: {ib.serial}")
+                print(f"    Hostname: {ib.hostname}")
+                if hasattr(ib, 'fpga') and ib.fpga:
+                    print(f"    FPGA: Programmed and connected")
         
         return True
         
     except Exception as e:
-        print(f"✗ Error during POCKET_CORRELATOR initialization: {e}")
+        print(f"\n✗ Error during CRS board programming: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -172,10 +163,18 @@ Examples:
                         help='Path to firmware directory (optional)')
     parser.add_argument('--skip-network-check', action='store_true',
                         help='Skip network settings verification')
-    parser.add_argument('--skip-discovery', action='store_true',
-                        help='Skip mDNS board discovery test')
+    parser.add_argument('--log-level', type=str, default='INFO',
+                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+                        help='Set logging level (default: INFO)')
     
     args = parser.parse_args()
+    
+    # Configure logging
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%H:%M:%S'
+    )
     
     print("\n")
     print("╔" + "═" * 58 + "╗")
@@ -197,17 +196,10 @@ Examples:
         print("Skipping network settings check (--skip-network-check)\n")
         results['network'] = None
     
-    # Test 3: CRS board discovery (optional)
-    if not args.skip_discovery:
-        results['discovery'], ip_address = test_crs_discovery(args.serial)
-    else:
-        print("Skipping CRS board discovery (--skip-discovery)\n")
-        results['discovery'] = None
-        ip_address = None
-    
-    # Test 4: POCKET_CORRELATOR initialization
-    results['pocket_correlator'] = test_pocket_correlator_init(
-        args.serial, 
+    # Test 3: CRS board programming
+    results['programming'] = test_program_crs(
+        args.serial,
+        mode='corr8',
         firmware_path=args.firmware_path
     )
     
@@ -239,8 +231,7 @@ Examples:
     if tested_results and all(tested_results.values()):
         print("✓ ALL TESTS PASSED")
         print("\nThe CRS connection infrastructure appears to be working correctly.")
-        if ip_address:
-            print(f"CRS board SN{args.serial} is available at {ip_address}")
+        print(f"CRS board SN{args.serial} was successfully programmed and connected.")
         return 0
     elif not tested_results:
         print("○ ALL TESTS SKIPPED")

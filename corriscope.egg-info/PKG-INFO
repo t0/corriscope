@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: corriscope
-Version: 0.1.dev4+gef2dd9170.d20260219
+Version: 0.1.dev11+g8ec023a4a.d20260317
 Summary: Operates array of FPGA boards used for implementing small and large scale radiotelescopes
 Author: McGill University
 Author-email: JF Cliche <vhdl@jfcliche.com>
@@ -29,6 +29,7 @@ Requires-Dist: netifaces
 Requires-Dist: zeroconf==0.34.3
 Requires-Dist: PyQt5
 Requires-Dist: pyqtgraph
+Requires-Dist: freetype-py
 Provides-Extra: docs
 Requires-Dist: sphinx; extra == "docs"
 Requires-Dist: sphinx_rtd_theme; extra == "docs"

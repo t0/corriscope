@@ -177,13 +177,20 @@ class Ccoll(object):
         if all(is_coro):  # If all the functions are coroutines
 
             try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-
-            futures = asyncio.gather(*(f(*args, **kwargs) for f in self._dict.values()))
-            # results = async.async_call(self._dict.values(), None, *args, **kwargs)
-            results = loop.run_until_complete(futures)
+                loop = asyncio.get_running_loop()
+                # If we're already in an event loop, we can't use run_until_complete
+                # Instead, we need to await the gather directly
+                raise RuntimeError('Cannot call async methods from within an already running event loop. Use await on the Ccoll object instead.')
+            except RuntimeError as e:
+                if 'no running event loop' in str(e).lower():
+                    # No event loop running, create one
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    futures = asyncio.gather(*(f(*args, **kwargs) for f in self._dict.values()))
+                    results = loop.run_until_complete(futures)
+                else:
+                    # Already in an event loop
+                    raise
 
         elif not any(is_coro):  # Otherwise, fall back on a looped invocation.
             results = [f(*args, **kwargs) for f in self._dict.values()]

@@ -43,7 +43,12 @@ class FPGABitstream(object):
         # binary
         logger = logging.getLogger(__name__)
         bitstream_folder = folder or cls.DEFAULT_BITSTREAM_FOLDER
-        filename = os.path.join(os.path.dirname(__file__), bitstream_folder, url)
+        
+        # Check if folder is an absolute path
+        if os.path.isabs(bitstream_folder):
+            filename = os.path.join(bitstream_folder, url)
+        else:
+            filename = os.path.join(os.path.dirname(__file__), bitstream_folder, url)
 
         mtime = os.path.getmtime(filename)
         mtime_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime))

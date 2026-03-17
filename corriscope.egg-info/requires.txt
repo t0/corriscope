@@ -18,6 +18,7 @@ netifaces
 zeroconf==0.34.3
 PyQt5
 pyqtgraph
+freetype-py
 
 [docs]
 sphinx

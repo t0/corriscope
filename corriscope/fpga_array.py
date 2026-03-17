@@ -1164,7 +1164,7 @@ class FPGAArray(object):
                 ########################
                 # Initializing operational mode
                 ########################
-                self.set_operational_mode(
+                await self.set_operational_mode(
                     mode=mode,
                     frames_per_packet=frames_per_packet,
                     chan8_channel_map=chan8_channel_map,
@@ -1627,7 +1627,7 @@ class FPGAArray(object):
     #             self.logger.warning('%r: set_crate_number: Cannot find a crate number for crate %s'
     #                 % (self, ic.get_string_id()))
 
-    def set_operational_mode(self,
+    async def set_operational_mode(self,
                              mode,
                              frames_per_packet=1,
                              send_flags=True,
@@ -1725,7 +1725,7 @@ class FPGAArray(object):
         # at the same rate, refuse to operate if
         #   - an Iceboard that is in a crate is not using the backplane clock
         #   - an iceboard that is not in a crate is using the backplane clock
-        clock_sources = self.ib.get_iceboard_clock_source_async()
+        clock_sources = await asyncio.gather(*[ib.get_iceboard_clock_source_async() for ib in self.ib])
         bad_clock_source_without_crate = [i for i, source in enumerate(clock_sources) if not self.ib[i].crate and source == 'CLOCK_SOURCE_BP']
         bad_clock_source_with_crate = [i for i, source in enumerate(clock_sources) if self.ib[i].crate and source != 'CLOCK_SOURCE_BP']
 
