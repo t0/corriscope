@@ -1,3 +1,75 @@
+# March 19, 2026
+
+## Session Overview
+**CODE CLEANUP:** Removing unused ICE/ZCU111 platform code from `fpga_array.py` while preserving CRS functionality and generic backplane support.
+
+## Cleanup Plan
+
+### Objective
+Remove legacy ICE and ZCU111 platform code from `fpga_array.py` to simplify the codebase for CRS-only operation. The file currently contains ~2800 lines, with an estimated 50-60% being ICE-specific code.
+
+### Scope
+
+**REMOVE:**
+- ICE/ZCU111 platform-specific parameters and initialization logic
+- ICE operational modes (chan8, shuffle16/128/256/512, chord16, corr16)
+- ICE-specific corner-turn algorithms (compute_cb1/2/3_bin_map, shuffle512 remapping)
+- ICE-specific link testing functions (BER testing, eye diagrams, backplane link detection)
+- ICE-specific diagnostic functions (crossbar status, shuffle status, RX error maps)
+- ICE-specific utility functions (noise injection, test patterns, FMC power monitoring)
+
+**PRESERVE:**
+- CRS operational modes (corr4, corr8, corr32, corr64, shuffle8)
+- Generic backplane infrastructure (for future CRS multi-board support)
+- Core initialization flow (mDNS discovery, platform connection, FPGA programming)
+- Gain management functions (load/save/set gains)
+- Correlator functions (start_correlators, get_corr_receiver)
+- Metrics collection (get_fpga_metrics_async, get_arm_metrics_async)
+- Generic Crate/Motherboard abstractions
+
+### Implementation Phases
+
+**Phase 1:** Remove ICE-specific corner-turn functions (~700 lines)
+- `get_corner_turn_bin_map()`, `compute_cb1/2/3_bin_map()`
+- `shuffle512_cb3_freq_remap()`, `shuffle512_cb3_lane_remap()`, `shuffle512_cb3_remap()`
+- `init_corner_turn()`, `get_shuffle_output()`, `get_chan_identity_map()`, `get_frequency_map()`
+
+**Phase 2:** Remove ICE-specific link testing functions (~550 lines)
+- `detect_backplane_links()`, `get_backplane_pcb_link_map()`, `get_backplane_qsfp_links()`
+- `get_backplane_qsfp_link_map()`, `get_gpu_link_map()`, `get_link_map()`
+- `get_ber()`, `get_ber_vs_power()`, `plot_ber_vs_power()`
+- `get_eye_matrix()`, `plot_eye_matrix()`
+- `print_crossbar2_frame_info()`, `get_corner_turn_engine_status_async()`
+- `_print_shuffle_status()`, `print_shuffle_status()`, `print_rx_err_map()`, `print_net_length_map()`
+- `reset_crossbar_stats()`, `reset_bp_shuffle_stats()`
+
+**Phase 3:** Remove other ICE-specific functions (~160 lines)
+- `set_tx_power()`, `set_test_pattern()`, `set_noise_injection()`, `get_user_output_state_async()`
+- `print_fmc_power()`, `print_frame_info()`, `plot_crate_temperatures()`, `_update_arm_firmware()`
+
+**Phase 4:** Simplify initialization logic (~200 lines reduction)
+- Remove `iceboards`, `icecrates`, `mezzanines`, `exclude_iceboards` parameters
+- Remove mezzanine discovery logic
+- Simplify hardware map processing for CRS-only
+
+**Phase 5:** Simplify `set_operational_mode()` (~400 lines reduction)
+- Remove ICE mode implementations (chan8, shuffle16/128/256/512, chord16, corr16)
+- Keep CRS modes (corr4/8/32/64, shuffle8)
+- Remove ICE-specific corner-turn initialization
+
+**Phase 6:** Clean up and test
+- Remove unused imports
+- Update documentation
+- Test with `test_crs_connection.py`
+
+### Expected Results
+- **Reduction:** ~1400-1600 lines (50-57% reduction)
+- **Clarity:** CRS-focused codebase, easier to understand and maintain
+- **Flexibility:** Generic backplane support preserved for future CRS multi-board configurations
+- **Compatibility:** POCKET_CORRELATOR and existing tests continue to work
+
+---
+
 # March 17, 2026
 
 ## Session Overview
