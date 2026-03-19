@@ -2440,13 +2440,6 @@ class FPGAArray(object):
     #             else:
     #                 gg.TXDIFFCTRL = pmax
 
-    def set_test_pattern(self):
-        for ic in self.ic:
-            for (slot, ib) in ic.slot.items():
-                for ch in range(16):
-                    ib.set_funcgen_function('ab', a=(slot - 1) << 4, b=ch << 4, channels=[ch])
-                ib.set_data_source('funcgen')
-
     IRIGB_SYNC_METHODS = ('irig-b', 'irigb', 'distributed_time')
     TRIG_SYNC_METHODS = ('trig',  'centralized_soft_trigger')
     LOCAL_SYNC_METHODS = ('local', 'local_soft_trigger')
@@ -2704,102 +2697,6 @@ class FPGAArray(object):
             await asyncio.sleep(0)
         if sync:
             self.sync()
-
-    def set_noise_injection(
-            self,
-            board,
-            enable=False,
-            offset=0,
-            high_time=8388608,
-            period=16777216,
-            local_sync=True,
-            output='bp_sma'):
-        """ Configure noise injection gating signal.
-
-        Parameters:
-
-            board:  is either the serial number (as a string) of the target
-                board, or is the target motherboard object. If board evaluates to
-                False (empty string), the noise injection setup is skipped.
-
-        Notes:
-
-            A sync event is necessary to restart the counters so the gating signal will be generated properly.
-
-        """
-        if not board:
-            return
-
-        ib = self.get_iceboard(board)
-
-        if enable:
-            ib.set_user_output_source('pwm', output=output)
-
-        ib.set_pwm(enable=enable, offset=offset, high_time=high_time,
-                   period=period, local_sync=local_sync)
-
-    async def get_user_output_state_async(self, board, output='bp_sma'):
-        """ Get the current state of the specified user output and the
-        information about its source.
-
-        Parameters:
-
-            board (tuple/list, str, Motherboard):  is either a 2-element tuple or
-                list describing the board, or a string containing the board's
-                serial number or hostname.
-
-            output (str): name of the user output to which the noise injection
-                hardware is connected. This will be used to verify if the PWM
-                signal is actually sent to that output.
-
-        Returns:
-
-            A dict containing the following fields:
-
-                board (str or tuple/list): the target board, as specified in the `board` parameter
-
-                output (str): output to which the noise injection electronics
-                    is connected, as specified by the `output` parameter.
-
-                output_source (str): name of the source driving the specified
-                    'output'.
-
-                pwm_offset (int): the PWM generator waveform offset from frame 0, in frames
-
-                pwm_high_time (int): the high time of the PWM generator waveform, in frames
-
-                pwm_period (int): the period of the PWM generator waveform, in frames
-
-                pwm_enabled (bool): True when the PWM generator is not in reset. Useful when output_source is 'pwm'.
-
-                user_bit0 (int): State of the user bit 0. Useful when output_source is 'user_bit0'.
-
-                user_bit1 (int): State of the user bit 1. Useful when output_source is 'user_bit1'.
-
-
-            If `board` evaluates to False, only the first 3 fields are returned, with
-            output_source set to None.
-
-        """
-        status = dict(board=board,
-                      output=output,
-                      output_source=None)
-        if not board:
-            return status
-
-        ib = self.get_iceboard(board)
-        output_source = ib.get_user_output_source(output)
-        offset, high_time, period, reset = ib.get_pwm()
-        user_bit0, user_bit1 = ib.get_user_bits()
-        status.update(
-            output_source=output_source,
-            pwm_offset=offset,
-            pwm_high_time=high_time,
-            pwm_period=period,
-            pwm_enabled=not reset,
-            user_bit0=user_bit0,
-            user_bit1=user_bit1)
-        return status
 
     def get_stream_id_map(self):
         """ Return the stream_ids if every channel of the array, indexed by channel_id.
