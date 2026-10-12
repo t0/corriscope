@@ -800,7 +800,7 @@ class SpectrumInstrumentsTM4D(SocketContext):
 
     def configure_gps(self, location='DRAO', lat=None, lon=None, alt=None):
         """
-        Configure the GPS for standard CHIME operations.
+        Configure the GPS for timing (static position) operation.
 
         The GPS is put in 'static' mode, where it tries only to get time information and not the
         position infromation. This requires less satellites and presumably provides for a more
@@ -812,10 +812,7 @@ class SpectrumInstrumentsTM4D(SocketContext):
 
         Valid location strings are:
 
-            'DRAO': The default position is the center of the CHIME array at
-                DRAO, Penticton, BC, Canada.
-
-            'McGill': The location of the GPS antenna at the McGill Rutherford building, Montreal, Canada
+            'DRAO': Dominion Radio Astrophysical Observatory, Penticton, BC, Canada.
 
         """
         if bool(location) == bool(lat is not None or lon is not None or alt is not None):
@@ -828,12 +825,8 @@ class SpectrumInstrumentsTM4D(SocketContext):
             lat = 49.320683333333335
             lon = -119.62329666666666
             alt = 562.0
-        elif location == 'McGill':
-            lat = 45.507100
-            lon = -73.579128
-            alt = 92.5
         else:
-            raise ValueError(f"Invalid location '{location}'. Valid locations are 'DRAO' or 'McGill'")
+            raise ValueError(f"Invalid location '{location}'. Valid locations are 'DRAO' (or pass lat/lon/alt)")
 
         with self.socket(flush=True):
             self.set_polling_mode()
@@ -971,7 +964,7 @@ class GPSAsyncRESTClient(AsyncRESTClient):
     """
     Implements an asynchronous client that exposes the functions of the specified remote RawAcq server.
 
-    This client is used by ch_master to start, configure and operate all the RawAcq servers in the array.
+    This client is used by fpga_master to start, configure and operate all the RawAcq servers in the array.
 
     The client is implemented using a Tornado AsyncHTTPClient. It exposes the RawAcq server methods
     (i.e REST endpoints) as local methods. The local methods are Tornado coroutines so requests to

@@ -38,7 +38,6 @@ from corriscope.common.metrics import Metrics
 from corriscope.common import State, run_async
 
 from corriscope.fpga_firmware import FPGAFirmware
-from .chfpga_udp import chFPGA_UDP
 from .f_engine.scaler import SCALER
 # Memory-mapped interface
 from .mmi import MMI, MMIRouter
@@ -75,26 +74,20 @@ class chFPGA_config(object):
         return '\n'.join([f'{key} = {value!r}' for (key, value) in sorted(vars(self).items())])
 
 
-class chFPGA(chFPGA_UDP, FPGAFirmware):
+class chFPGA(FPGAFirmware):
     """Provides an API to access the chFPGA firmware running on the motherboard's FPGA.
 
     The API provides the methods to establish communication with the FPGA to
     access its memory map, and provides objects to configure it and control
     its operations.
 
-    This class supports two methods to access the FPGA firmware:
-
-    - Ethernet/UDP-based Memory-mapped Interface (MMI) implemented directly by the FPGA
-      (UltraScale+ USP UDP stack), used on MGK7MB today. SPI-based access from the on-board
-      processor configures FPGA networking before that UDP link comes up.
-
-    - TCPipe: TCP-based BSB bridge on the on-board processor (ZCU111 / CRS today).
+    The FPGA memory map is reached through TCPipe, the TCP-based BSB bridge running on the
+    board's ARM processor.
     """
 
     _array_method_classes = {'chFPGA': chFPGAArrayMethods}
 
-    #: Values for ``self.BSB_TRANSPORT`` and ``PLATFORM_SUPPORT[''bsb_transport'']`` (same strings).
-    BSB_TRANSPORT_UDP = 'udp'
+    #: Value of ``self.BSB_TRANSPORT`` and ``PLATFORM_SUPPORT['bsb_transport']`` (only TCPipe is implemented).
     BSB_TRANSPORT_TCPIPE = 'tcpipe'
 
     #: Requested kernel receive-buffer (SO_RCVBUF) for the UDP data socket. Sized to
@@ -105,8 +98,7 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
     # Define the motherboard models and operational modes supported by this class, and associate corresponding FPGA
     # configuration bitstreams and initialization parameters The 'clock_divider' is used to know when clock frequency
     # to expect when we monitor the ADC clock with the frequency counter.This could be independent from the
-    # procrssing clock. For the CRS, the processing clock is Fs/8 and the monitoring clock is Fs/16. For the
-    # IceBoard, it's both fs/4. (fs=sampling frequency)
+    # processing clock. For the CRS, the processing clock is Fs/8 and the monitoring clock is Fs/16 (Fs=sampling frequency).
     PLATFORM_SUPPORT = ( # [ {"platform":<platform_model>, "modes":<supported_modes>, "firmware_url":<firmware filename_or_url>, <other platform key-value parameters>}, ...]
         dict(platform="CRS",    modes=("corr8",),     
             firmware_url='chfpga_crs_corr8.bit',     
@@ -198,22 +190,11 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
     # Platform information
     ################################################################################################
 
-    _PLATFORM_ID_ML605 = 0  #: ID number for the Virtex-6-based Xilinx ML606 Evaluation board
-    _PLATFORM_ID_KC705 = 1  #: ID number for the Kintex-7-based Xilinx KC705 Evaluation board
-    _PLATFORM_ID_MGK7MB_REV0 = 2  #: ID number for the McGill MGK7MB Rev 0 motherboard (a.k.a Iceboard Rev 0). Works for All subsequent revs.
-    _PLATFORM_ID_MGK7MB_REV2 = 3  #: ID number for the McGill MGK7MB Rev 2 motherboard (a.k.a Iceboard Rev 2). Works for All subsequent revs.
-    _PLATFORM_ID_ZCU111 = 4  #: ID number for Xilinx ZCU111 evaluation board.
-    _PLATFORM_ID_CRS = 5  #: ID number for Xilinx ZCU111 evaluation board.
+    _PLATFORM_ID_CRS = 5  #: PLATFORM_ID reported by the firmware GPIO module on the t0.technology CRS board
 
-    #: Map of all supported platform indexed by the `PLATFORM_ID` returned by the FPGA
+    #: Supported platforms indexed by the `PLATFORM_ID` returned by the FPGA
     _PLATFORM_ID_LIST = {
-        # ID: ( Board name, class to instantiate)
-        _PLATFORM_ID_ML605: ('Virtex 6 (XC6V240T-1 FFG1156) on Xilinx ML605 Evaluation board', None),
-        _PLATFORM_ID_KC705: ('Kintex 7 (XC7K325T-2 FFG900C) on Xilinx KC705 Evaluation board', None),
-        _PLATFORM_ID_MGK7MB_REV0: ('Kintex 7 (XC7K420T-2 FFG901) on McGill MGK7MB / ICEBoard Rev0', None),
-        _PLATFORM_ID_MGK7MB_REV2: ('Kintex 7 (XC7K420T-2 FFG901) on McGill MGK7MB / ICEBoard Rev2', None),
-        _PLATFORM_ID_ZCU111:  ('Zynq Ultrascale+ RfSoC (ZU28) Xilinx ZCU111 Evaluation Board', None),
-        _PLATFORM_ID_CRS:  ('Zynq Ultrascale+ RfSoC (XCZU47) t0 technology CRS Board ', None),
+        _PLATFORM_ID_CRS: ('Zynq Ultrascale+ RFSoC (XCZU47) t0.technology CRS board', None),
     }
 
 
@@ -262,7 +243,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
         self._sampling_frequency = None  # Set in init()
         self._reference_frequency = None  # set in init()
         self.FRAME_PERIOD = None
-        self._FMC_present = []  # indicates if the FMC board is present. If not, the modules will act accordingly.
         self._last_init_time = None
         self._capture_pkt_frames_per_burst = None
         self.mmi = None
@@ -280,7 +260,7 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
         self.udp_err_ctr = 0
         self.udp_err_msgs = []
 
-        #: ``BSB_TRANSPORT_UDP``, ``BSB_TRANSPORT_TCPIPE``, or ``None`` until :meth:`open_mmi_async`.
+        #: ``BSB_TRANSPORT_TCPIPE`` or ``None`` until :meth:`open_mmi_async`.
         self.BSB_TRANSPORT = None
 
     def get_id(self, lane=None, default_crate=None, default_slot=None, numeric_only=False):
@@ -310,32 +290,12 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
         """
         Create a Memory-mapped interface (MMI) to the FPGA registers through the Byte-serial bus (BSB).
 
-        Depending on the platform, BSB access is provided through:
-
-            - Direct UDP communication with the FPGA
-            - TCPipe connection with the on-board processor (requires the self.mb.tcpipe object)
-
-        Transport is chosen from the bsb_transport parameter in the firmware parameters.
-
-        Parameters:
-
-            udp_retries (int): How many times UDP commands will be retried
-                before an IOError exception is raised. If `None`, the default
-                value set at object creation will be used.
-
-            fpga_ip_addr_fn (function): Function used to compute the FPGA IP
-                address out of the ARM IP address. If `None`, the default
-                value set at object creation will be used.
-
-            interface_ip_addr (str): IP address of the interface to be used to
-                communicate with both the ARM and FPGA. If `None`, the interface
-                will be detected automatically by establishing a connection with
-                the ARM.
+        BSB access goes through the TCPipe connection to the on-board processor
+        (``self.mb.tcpipe``), as selected by the ``bsb_transport`` firmware parameter.
         """
 
         # Check if core communications with the FPGA was already opened
         if self.mmi:
-            # if any(x is not None for x in [udp_retries, fpga_ip_addr_fn, interface_ip_addr]):
             raise RuntimeError('Attempting to re-open an already-open '
                                'MMI communication channel with the FPGA')
 
@@ -355,13 +315,9 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
         self.set_host_interface_ip_address()
 
         # Creates the MMI interface and open communications to the FPGA through it.
-        if self.BSB_TRANSPORT == self.BSB_TRANSPORT_TCPIPE:
-            self.mmi = await self.mb.tcpipe.open_tcpipe_mmi_async()
-        elif self.BSB_TRANSPORT == self.BSB_TRANSPORT_UDP:
-            self.mmi = await self.open_udp_mmi_async()
-        else:
-            raise RuntimeError(
-                f'{self!r}: No BSB transport was specified for this firmware/motherboard (BSB_TRANSPORT={self.BSB_TRANSPORT!r}'); 
+        if self.BSB_TRANSPORT != self.BSB_TRANSPORT_TCPIPE:
+            raise RuntimeError(f'{self!r}: Unsupported BSB transport {self.BSB_TRANSPORT!r}; only TCPipe is implemented')
+        self.mmi = await self.mb.tcpipe.open_tcpipe_mmi_async()
                 
     async def close_mmi_async(self):
         """ Closes the MMI interface to the FPGA 
@@ -383,26 +339,14 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
         the data packets are arriving through the same
         interface as the command stream. 
 
-        If the BSB transport is TCPipe, the interface is obtained by inspecting the existing TCPIPE
-        socket.**
-
-        If the BSB transport is not TCPipe, the interface is obtained by opening a TCP socket to the motherboard processor and inspecting the
-        socket that was used, and then close that socket. **This assumes that the brief socket connection will not cause side-effects on the motherboard.**
+        The interface is obtained by inspecting the existing TCPipe socket.
         """
 
         if self.interface_ip_addr:  # set the interface only if we have not manually defined one
             return
 
         if self.mb.hostname:
-            if self.BSB_TRANSPORT == self.BSB_TRANSPORT_TCPIPE:
-                s = self.mb.tcpipe.sock
-                (self.interface_ip_addr, _) = s.getsockname()
-            else:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.connect((self.mb.hostname, self.mb.port))
-                self.logger.debug(f'{self!r}: Established TCP connection with {s.getsockname()} to determine interface.')
-                (self.interface_ip_addr, _) = s.getsockname()
-                s.close() 
+            (self.interface_ip_addr, _) = self.mb.tcpipe.sock.getsockname()
         else:
             self.interface_ip_addr = None
 
@@ -411,12 +355,7 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
            self,
            init=1,
            verbose=0,
-           fpga_ip_addr=None,
-           fpga_ip_addr_fn=None, # lambda a, b, c, d: (a, b, 3, d),
-           fpga_control_port_number=None,
-           local_control_port_number=None,
            interface_ip_addr=None,
-           udp_retries=10,
            irigb_source=None):
         """
         Opens communication with the FPGA, retrieves the firmware configuration information and
@@ -440,23 +379,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
             verbose (int): verbosity level, which is passed to the `init()`
                 method.
 
-            fpga_ip_addr (str): FPGA's listening IP address in the form
-                'xx.xx.xx.xx'. If None (default), the address will be obtained by
-                converting the ARM address using the function provided in
-                fpga_ip_addr_fn.
-
-            fpga_ip_addr_fn (function): function (A,B,C,D) = fn(a,b,c,d) which
-                generates the FPGA address (A,B,C,D) based on the ARM IP address
-                (a,b,c,d).
-
-            fpga_control_port_number (int): FPGA's listening port number for commands. Defaults to 41000. If None,
-                the local port number is used.
-
-            local_control_port_number (int): UDP port number to use to receive command
-                replies. If 0, the number is allocated randomly by the OS. If
-                None, a fixed number based on the crate_number and a slot number
-                will be used if available.
-
             interface_ip_addr (str): IP address of the interface to be used to
                 communicate with both the ARM and FPGA. If `None`, the interface
                 will be detected automatically by establishing a connection with
@@ -477,18 +399,10 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
 
         # Store networking parameters, overriding them with the extra hardware map parameters if they were provided at construction time
         hwm = self.mb.extra_hwm_args
-        self.fpga_ip_addr = hwm.get('fpga_ip_addr', fpga_ip_addr)
-        self.fpga_ip_addr_fn = hwm.get('fpga_ip_addr_fn', fpga_ip_addr_fn)
-        self.fpga_control_port_number = hwm.get('fpga_control_port_number', fpga_control_port_number)
-        self.local_control_port_number = hwm.get('local_control_port_number', local_control_port_number)
         self.interface_ip_addr = hwm.get('interface_ip_addr', interface_ip_addr)
-        self.udp_retries = hwm.get('udp_retries', udp_retries)
 
         self.logger.debug(
             f'{self!r}: Opening communication with the FPGA with parameters '
-            f'fpga_ip_addr={self.fpga_ip_addr}, '
-            f'fpga_control_port_number={self.fpga_control_port_number}, '
-            f'local_control_port_number={self.local_control_port_number}, '
             f'interface_ip_addr={self.interface_ip_addr}, init={init}')
 
         # If init<0, we do not perform any communication with the FPGA, so we don't read the firmware configuration
@@ -574,8 +488,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
                     raise RuntimeError(f'{self!r}: Platform ID 0x{self.PLATFORM_ID:02X} is not recognized')
 
 
-                self._NUMBER_OF_FMC_SLOTS = self.mb.NUMBER_OF_FMC_SLOTS
-
                 self.NUMBER_OF_ADCS = self.GPIO.NUMBER_OF_ADCS
                 self.FFT_TYPE = self.GPIO.FFT_TYPE
                 self.FFT_LATENCY = (self.FFT_INFO[self.FFT_TYPE])['latency']
@@ -585,10 +497,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
                 # Set platform/implementation-specific features & constants based on a local table
                 if self.PLATFORM_ID == self._PLATFORM_ID_CRS:
                     self.HAS_REFCLK = True
-                    self.HAS_SPI = False
-                    self.HAS_I2C = False
-                    self.HAS_ADCDAQ = False
-                    self.HAS_FMC = False
                     self.MAX_BSB_COMMAND_LENGTH = 512
                     self.HAS_UPACK = self.mode == 'shuffle8' # Hacky method until we can read it back.
                     self.CROSSBAR1_TYPE = "URAM"
@@ -651,7 +559,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
 
                 self.logger.debug(f'{self!r}:     Firmware timestamp: {self.get_version()}')
                 self.logger.debug(f'{self!r}:     Hardware platform: {self._PLATFORM_ID_LIST[self.PLATFORM_ID][0]}')
-                self.logger.debug(f'{self!r}:         Number of FMC slots: {self._NUMBER_OF_FMC_SLOTS}')
                 self.logger.debug(f'{self!r}:     ADC configuration')
                 self.logger.debug(f'{self!r}:         Number of ADCs: {self.NUMBER_OF_ADCS}')
                 self.logger.debug(f'{self!r}:         Number of bits per sample: {self.ADC_BITS_PER_SAMPLE}')
@@ -686,11 +593,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
                 self.logger.debug(f'{self!r}: ===     Instantiating SYSMON')
                 self.SYSMON = sysmon.SYSMON(router=self.system_router, router_port='SYSMON', config=self.config.add("sysmon"))
 
-                # CRS has no FPGA-side SPI/I2C masters (HAS_SPI/HAS_I2C are False); the ARM handles those buses.
-                self.SPI = None
-                self.I2C = None
-
-
                 self.logger.debug(f'{self!r}: ===     Instantiating FreqCtr')
                 self.FreqCtr = freqctr.FreqCtr(router=self.system_router, router_port='FREQ_CTR', config=self.config.add("freqctr"))
 
@@ -707,7 +609,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
                 self.logger.debug(f'{self!r}: === Instantiating F-Engine')
                 # Instantiate a channelizer for for each input
                 self.chan = chan.ChanArray(router = self.top_router, router_port = 'CHAN', config=self.config.add("chan"))
-                self.CHAN_FMC_NUMBER = [i // 8 for i in range(self.NUMBER_OF_CHANNELIZERS)]
                 # self._init_capture_state_tracking()
 
                 await asyncio.sleep(0)
@@ -778,15 +679,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
                     raise RuntimeError(f'Unknown Data capture type {self.CAPTURE_TYPE}')
 
 
-                # ---------------------------------------------------------------------
-                # Instantiate ADC board hardware ressource handlers objects
-                # ---------------------------------------------------------------------
-
-                await asyncio.sleep(0)
-                # CRS has no FMC mezzanines (ADCs are on the RFSoC), so no FMC slot is ever present.
-                self._FMC_present = [False] * self._NUMBER_OF_FMC_SLOTS
-                self.ANT_FMC_IS_PRESENT = [False] * self.NUMBER_OF_CHANNELIZERS
-
                 self._data_socket = None
                 self._tcp_data_socket = None
 
@@ -800,10 +692,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
         Close chFPGA object
         """
 
-        # # Close FMC boards
-        # for mezz in self.mezzanine.values():
-        #     if hasattr(mezz, 'close'):
-        #         mezz.close()
 
         await self.close_mmi_async()
         # await super().close_async()  # Make sure we close superclasses (there are none)
@@ -835,7 +723,7 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
 
         Parameters:
 
-             sampling_frequency (float): Sampling frequency in Hz to set on the ADC Mezzanine
+             sampling_frequency (float): Sampling frequency in Hz of the ADCs
                  boards. If `None`, the platform/mode default is used. (default 800 MHz). Normally
                  `None`, in which case the value is taken from firmware parameter table.
 
@@ -845,7 +733,7 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
                  spikes when we start and stop the ADCs. Is notmally `None`, in which case the
                  platform/mode defaut is used.
 
-             reference_frequency (float): Frequency in Hz of the Iceboard's reference clock (default
+             reference_frequency (float): Frequency in Hz of the board's reference clock (default
                  is 10 MHz). Normally `None`, in which case the value is taken from firmware parameter table.
 
                  A default delay table is used if none is provided.
@@ -1052,7 +940,7 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
     def check_adc_frequencies(self, stage):
         """ Check the frequencies of the ADC clocks 
 
-        This method is called at various stages of the initialization to check the frequencies of the ADC clocks. This catches issues of  IceBoard ADC mezzanines sometimes erratically losing their clocks after the initial power-up. On CRS it confirms the PLL / RFDC output clocks.
+        This method is called at various stages of the initialization to check the frequencies of the ADC clocks. On the CRS this confirms the PLL / RFDC output clocks.
 
         Parameters:
             stage (str): The stage of the initialization to check the ADC frequencies for. This string is used ot identify where the check is being performed in the log messages.
@@ -1064,8 +952,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
             Prefer :meth:`check_adc_frequencies_async` from async code so the
             frequency-counter gate wait yields to other boards.
         """
-        # TODO: disable if mezzanine is not attached
-        # if self.mezzanine.atta
         err = True
         freqs = []
         for trial in range(10):
@@ -1077,7 +963,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
 
     async def check_adc_frequencies_async(self, stage):
         """Async version of :meth:`check_adc_frequencies`."""
-        # TODO: disable if mezzanine is not attached
         err = True
         freqs = []
         for trial in range(10):
@@ -1141,8 +1026,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
 
         Async wrapper around :meth:`fpga_core_reg_read`. The body is blocking
         MMI; ``async`` exists so other async firmware methods can ``await`` it.
-        Tuber does not override this — IceBoard SPI access before UDP MMI is up
-        is :meth:`~corriscope.hardware.ice.iceboard.IceBoard.fpga_core_reg_spi_read_async`.
 
         Parameters:
 
@@ -1294,8 +1177,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
                 self.logger.error(
                     f"{self!r}: BSB/MMI communication error while checking command counters "
                     f"(trial {int(trial + 1)}). The error is:\n {e}")
-                if self.BSB_TRANSPORT == self.BSB_TRANSPORT_UDP:
-                    await self.reset_fpga_udp_stack()
                 valid = False
                 reset = True
             except Exception as e:
@@ -1303,7 +1184,7 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
                     f"{self!r}: Unhandled error during command counter check. The error is:\n {e!r}")
                 raise
         else:  # executes if we exhausted the for loop iterations, i.e  no break
-            errmsg = f"{self!r}: Could not re-establish UDP communinication with the FPGA. Raising an exception"
+            errmsg = f"{self!r}: Could not re-establish BSB communication with the FPGA. Raising an exception"
             self.logger.error(errmsg)
             raise IOError(errmsg)
         return valid
@@ -1322,58 +1203,34 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
 
         Does not change the target MAC or IP address.
         """
-        if self.BSB_TRANSPORT == self.BSB_TRANSPORT_UDP:
-            await self._set_local_udp_data_port_number_async(port)
-        elif self.BSB_TRANSPORT == self.BSB_TRANSPORT_TCPIPE:
-            self.mb.tcpipe.set_local_data_port_number(port)
-        else:
-            raise RuntimeError(f'{self!r}: No UDP or TCPipe path for local data port')
+        self.mb.tcpipe.set_local_data_port_number(port)
 
     async def get_local_data_port_number_async(self):
-        """Return the UDP data-channel destination port (FPGA core map or TCPipe register)."""
-        if self.BSB_TRANSPORT == self.BSB_TRANSPORT_UDP:
-            return await self._get_local_udp_data_port_number_async()
-        if self.BSB_TRANSPORT == self.BSB_TRANSPORT_TCPIPE:
-            return self.mb.tcpipe.get_local_data_port_number()
-        raise RuntimeError(f'{self!r}: No UDP or TCPipe path for local data port')
+        """Return the UDP data-channel destination port (TCPipe register)."""
+        return self.mb.tcpipe.get_local_data_port_number()
 
     async def set_udp_data_target_address_async(self, ip_addr=None, port=None, mac_addr=None):
         """Set the destination MAC/IP/port for the UDP data stream sent by the FPGA.
 
-        On ``BSB_TRANSPORT_UDP``, programs FPGA core registers via
-        :meth:`_set_udp_data_target_address_async`. On ``BSB_TRANSPORT_TCPIPE``,
-        MAC and IP are managed by the platform; only ``port`` is programmed via
+        MAC and IP are managed by the TCPipe platform; only ``port`` is programmed via
         :meth:`set_local_data_port_number_async`.
 
         Parameters:
-            ip_addr (str): The IP address of the data target (UDP path only).
+            ip_addr (str): Ignored (managed by the platform).
             port (int): The port number of the data target.
-            mac_addr (str): The MAC address of the data target (UDP path only).
+            mac_addr (str): Ignored (managed by the platform).
         """
-        if self.BSB_TRANSPORT == self.BSB_TRANSPORT_TCPIPE:
-            if port is not None:
-                self.logger.info(
-                    f'{self!r}: setting UDP data destination port to {port} via TCPipe '
-                    f'(MAC/IP managed by platform; ip={ip_addr!r}, mac={mac_addr!r} ignored)')
-                await self.set_local_data_port_number_async(port)
-            else:
-                self.logger.warning(
-                    f'{self!r}: set_udp_data_target_address_async called without port on '
-                    f'TCPipe platform; destination port unchanged.')
-            return
-
-        if self.BSB_TRANSPORT == self.BSB_TRANSPORT_UDP:
-            await self._set_udp_data_target_address_async(
-                ip_addr=ip_addr, port=port, mac_addr=mac_addr)
-            return
-
-        self.logger.warning(
-            f'{self!r}: Setting the target MAC & IP address for the UDP data channel is not currently '
-            f'supported by this platform (it is likely managed by the platform). The request will be ignored. Make sure the UDP receiver '
-            f'uses the correct address and port for this platform.')
+        if port is not None:
+            self.logger.info(
+                f'{self!r}: setting UDP data destination port to {port} via TCPipe '
+                f'(MAC/IP managed by platform; ip={ip_addr!r}, mac={mac_addr!r} ignored)')
+            await self.set_local_data_port_number_async(port)
+        else:
+            self.logger.warning(
+                f'{self!r}: set_udp_data_target_address_async called without port; destination port unchanged.')
 
     # ---------------------------------------------------------
-    # IceBoard / mezzanine helpers (GPIO path, I2C — not the USP UDP stack)
+    # Board-level helpers (GPIO path)
     # ---------------------------------------------------------
 
     async def get_fpga_firmware_cookie_async(self, resync=False):
@@ -2038,12 +1895,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
 
 
 
-    def is_fmc_present_for_channel(self, channel_number):
-        return self.ANT_FMC_IS_PRESENT[channel_number]
-
-    def is_fmc_present(self, slot_number):
-        return self._FMC_present[slot_number]
-
     def get_channels(self, channels=None):
         """ Return a list of available channel numbers """
         if channels is None:
@@ -2202,11 +2053,7 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
         config.system_platform_id = self.PLATFORM_ID
         config.system_interface_ip_address = self.interface_ip_addr
 
-        config.system_fpga_ip_address = self.fpga_ip_addr
-        config.system_fpga_port_number = self.fpga_control_port_number
-        config.system_local_command_port_number = self.local_control_port_number
         config.system_local_data_port_number = await self.get_local_data_port_number_async()
-        config.system_local_corr_port_number = self.local_control_port_number
 
         config.number_of_channelizers = self.NUMBER_OF_CHANNELIZERS
         config.system_list_of_antennas_with_channelizers = self.LIST_OF_ANTENNAS_WITH_FFT
@@ -3199,7 +3046,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
         try:
             with open(gain_filename, 'w') as f:
                 gains = pickle.dump(gains, f)
-            # self.logger.info('Setting gains on IceBoard SN%s, crate %s, slot %i' % (ib.serial, crate, slot))
             # ib.set_gain(g_array, bank=bank)  # *** should this be bank=all_bank
         except IOError:
             self.logger.warning(f"Gain file '{gain_filename}' could not be saved for (crate,slot)={self.get_id()!r} ")
@@ -3859,7 +3705,6 @@ class chFPGA(chFPGA_UDP, FPGAFirmware):
         if not self.is_open():
             return metrics
         try:
-            await self.clear_fpga_udp_errors()
             for i, chan in self.chan.items():
                 metrics.add('fpga_fft_overflow_count', value=chan.FFT.OVERFLOW_COUNT, chan=i)
                 metrics.add('fpga_scaler_overflow_count', value=chan.SCALER.STATS_SCALER_OVERFLOWS, chan=i)

@@ -1,4 +1,4 @@
-# Configuration for ch_master.py. Only edit this file if you know what you are
+# Configuration for fpga_master. Only edit this file if you know what you are
 # doing"
 
 #===============================================================================
@@ -286,8 +286,8 @@ def: &default  # defaults, referenced below
                         handlers: [logfile, stderr, syslog]
 
         use_fixed_port_numbers: True # fpga_master will assign fixed port numbers using port_number= 41000 + 100*(crate_number+1) + slot_number
-        servers:  # node_name: {hostname: rest_server_hostname, port: rest_server_port, iceboards: [(crate, slot), (crate, slot)...]}
-            # 'raw_acq0': {hostname: null , port: 54322, iceboards: [[null, 0]]}  # UDP port numbers are assigned automatically an
+        servers:  # node_name: {hostname: rest_server_hostname, port: rest_server_port, boards: [(crate, slot), (crate, slot)...]}
+            # 'raw_acq0': {hostname: null , port: 54322, boards: [[null, 0]]}  # UDP port numbers are assigned automatically an
         common_config: # This is merged with each server config before sending it to the server along with the start() command
             # Capture paratemers to use when the raw_acq server is started
 
@@ -329,8 +329,6 @@ corr8:
             mode: corr8  # shuffle 256 and 512 require crate numbers
             sync_method: local #  distributed_time # <-- For R232. Change to --> sync_method: distributed_time <-- for D3A. #local_soft_trigger
             sync_source: sma_a
-            udp_retries: 10
-            # fpga_ip_addr_fn: '(a,b,c+1,d)'
 
         channelizer_params: # parameters used to set up the channelizers (CRS: no MGADC08/adcdaq keys)
             data_source : 'adc' # Source of the function generator, as follows:
@@ -444,7 +442,7 @@ corr8:
     raw_acq:
         <<: *default_raw_acq
         no_ping: True
-        servers:  # node_name: {hostname: rest_server_hostname, port: rest_server_port, iceboards: [(crate, slot), (crate, slot)...]}
+        servers:  # node_name: {hostname: rest_server_hostname, port: rest_server_port, boards: [(crate, slot), (crate, slot)...]}
             'raw_acq0':
                 hostname: localhost # null forces the creation of a new local server. Use 'localhost' to use an existing local server
                 port: 54322

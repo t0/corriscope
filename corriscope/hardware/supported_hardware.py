@@ -4,8 +4,7 @@ Edit this file to add, remove, or update a hardware platform. Each entry
 tells ``HardwareMap`` how to locate and import the corresponding class on
 demand:
 
-- ``type_``            : hardware base class (``Motherboard``, ``Crate``,
-                         ``Mezzanine``). Determines which in-memory class
+- ``type_``            : hardware base class (``Motherboard`` or ``Crate``). Determines which in-memory class
                          registry the entry belongs to.
 - ``name``             : class name to import from the ``package`` below.
 - ``part_number``      : official part number for the class, or ``None`` for
@@ -25,7 +24,6 @@ instead.
 
 from .motherboard import Motherboard
 from .crate import Crate
-from .mezzanine import Mezzanine
 
 
 HARDWARE = (

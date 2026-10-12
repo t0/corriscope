@@ -12,7 +12,7 @@ class pca9546a(object):
 
     Parameters:
 
-        i2c_interface (I2CInterface object): object providing the write command to the I2C bus on which the device is connected.
+        i2c_interface (I2C interface object (e.g. TCPipe_I2C)): object providing the write command to the I2C bus on which the device is connected.
 
         address (int): 7-bit I2C address of this device
 

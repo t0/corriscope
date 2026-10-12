@@ -54,7 +54,7 @@ class CRS(Motherboard):
     Provides:
 
     - Lightweight list-based Hardware map management
-    - Model, serial, slot, crate and mezzanine self discovery through the Iceboard (no mDNS required)
+    - Model, serial, slot and crate self discovery through TCPipe (no mDNS required)
     - Access to the memory-mapped registers in the FPGA's firmware using the TCP link.
 
     Parameters:
@@ -63,7 +63,7 @@ class CRS(Motherboard):
         serial (str): Serial number of the board. Can be provided by the ARM.
         slot (int): Slot number in which the board is installed ona backplane. None if there is no backplane.
 
-    ..        crate (IceCrateHandler): = object that handle the backplane on which the board is connected. `None` if the board is not connected to a backplane.
+    ..        crate (crateHandler): = object that handle the backplane on which the board is connected. `None` if the board is not connected to a backplane.
 
     """
 
@@ -538,29 +538,11 @@ class CRS(Motherboard):
         # await self.hw.set_led('GP_LED2', 1)  # Hardware link is on
         # await self.hw.set_led('GP_LED1', 0)  # Full FPGA firmware is not yet on
 
-        # If we want to use the FPGA's I2C firmware interface instead of the onboard processor's
-        # if False:
-        #     # -------------------------------------------------------------------------
-        #     # Open FPGA's I2C interfaces
-        #     # -------------------------------------------------------------------------
-        #     self.core_i2c = i2c.I2C_base(self.fpga, self._SYSTEM_I2C_BASE_ADDR)
-        #     await asyncio.sleep(0)
-        #     # Create standardized I2C interface
-        #     self.i2c = I2CInterface(
-        #         write_read_fn=self.fpga_i2c_write_read,  # write-read function
-        #         port_select_fn=self.fpga_i2c_set_port,
-        #         bus_table=IceBoardHardware.FPGA_I2C_BUS_LIST,
-        #         switch_addr=IceBoardHardware._FPGA_I2C_SWITCH_ADDR,
-        #         parent=self)  # parent object, whose repr() is used to tag messages
-
     async def close_fpga_async(self):
         await self.fpga.close()
 
     def is_open(self):
         return self._is_open
-
-    def is_fmc_present(self, slot):
-        return False
 
     async def ping_async(self, timeout=0.1):
         """
@@ -626,14 +608,6 @@ class CRS(Motherboard):
                     f'slot {self.slot}; updating to the TCPipe value')
             self.update_instance(slot=actual_slot)
         return self.slot
-
-    async def discover_mezzanines_async(self, update=True):
-        """Detect mezzanines attached to the motherboard and update the hardware map accordingly if
-        update=True.
-
-        """
-        return None
-
 
     async def discover_crate_async(self, update=True):
         """Discover crate model/serial from TCPipe init-time backplane IPMI."""
@@ -772,24 +746,6 @@ class CRS(Motherboard):
         """
         fpga_is_programmed = await self.is_fpga_programmed_async()
         self.tcpipe.set_fpga_bitstream_crc(crc32 if fpga_is_programmed else None)
-
-    # def clear_fpga_bitstream(self):
-    #     """ Stop the operation of the FPGA.
-
-    #     Could be used if we detect that we don't have the right kind of
-    #     mezzanines.
-    #     """
-    #     raise NotImplementedError()
-
-
-    ###################################
-    # Mezzanine EEPROM access methods
-    ###################################
-
-    async def _mezzanine_eeprom_read_async(self, mezzanine):
-        """ Returns the contents of the specified mezzanine's EEPROM.
-        """
-        return None
 
     # Backplane/crate-related methods
 
@@ -1036,8 +992,8 @@ class CRS(Motherboard):
     async def get_slot_number(self):
         return None
 
-    def _pll_input_to_iceboard_clock_source(self, pll_input):
-        """Map CRS PLL input index to IceBoard-style clock source names."""
+    def _pll_input_to_clock_source(self, pll_input):
+        """Map CRS PLL input index to clock source names."""
         if pll_input == self.PLL_INPUT_BP_CLK_10MHZ:
             return 'CLOCK_SOURCE_BP'
         if pll_input == self.PLL_INPUT_SMA_CLK_10MHZ:
@@ -1048,18 +1004,18 @@ class CRS(Motherboard):
             return 'CLOCK_SOURCE_XTAL'
         return f'CLOCK_SOURCE_PLL_{pll_input}'
 
-    def _get_iceboard_clock_source(self):
+    def _get_clock_source(self):
         """Return the reference clock source used by the motherboard PLL."""
         pll_input = getattr(self, 'input_reference', None)
         if pll_input is None and hasattr(self, 'pll') and self.pll is not None:
             pll_input = self.pll.get_active_clkin()
-        return self._pll_input_to_iceboard_clock_source(pll_input)
+        return self._pll_input_to_clock_source(pll_input)
 
-    async def get_iceboard_clock_source_async(self):
-        return self._get_iceboard_clock_source()
+    async def get_clock_source_async(self):
+        return self._get_clock_source()
 
-    def get_iceboard_clock_source_sync(self):
-        return self._get_iceboard_clock_source()
+    def get_clock_source_sync(self):
+        return self._get_clock_source()
 
     def get_motherboard_temperature(self, sensor):
         """ Synchronous wrapper to return motherboard temperature sensor value.
@@ -1178,7 +1134,7 @@ class CRS(Motherboard):
         """ Get the CRS hardware monitoring information.
 
         Returns:
-            a :class:`Metrics` object containing the IceBoard monitoring information.
+            a :class:`Metrics` object containing the board monitoring information.
         """
         try:
             _, metrics = await self._get_motherboard_metrics_async()

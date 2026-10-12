@@ -444,8 +444,8 @@ class GTY(MMI):
         plt.imshow(np.log10(eye_diag.ber_map+1e-12), origin='lower', extent=extent, aspect=0.1, vmin=-12, vmax=1)
         plt.xlabel('Horizontal sampling offset')
         plt.ylabel('Vertical sampling offset')
-        iceboard = eye_diag.gty.fpga
-        plt.title(f'Eye diagram for IceBoard SN{iceboard.serial} (Icecrate {iceboard.crate.__class__.__name__} SN{iceboard.crate.serial} Slot {int(iceboard.slot)}) Lane {int(eye_diag.gty.instance_number + 1)}')
+        board = eye_diag.gty.fpga
+        plt.title(f'Eye diagram for board SN{board.serial} (crate {board.crate.__class__.__name__} SN{board.crate.serial} Slot {int(board.slot)}) Lane {int(eye_diag.gty.instance_number + 1)}')
 
 class XXVGLRouter(MMIRouter):
     ROUTER_PORT_NUMBER_WIDTH = 4

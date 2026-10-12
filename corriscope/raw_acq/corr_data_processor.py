@@ -88,11 +88,7 @@ class CorrDataProcessor(UCorrPacketProcessor):
             number_of_correlated_inputs=int(self.NCHAN),
             sample_freq=float(cfg.sample_freq_mhz if cfg.has_attr('sample_freq_mhz') else 800.),
         )
-        if engine == 'ICE':
-            geom['number_of_correlators'] = int(cfg.number_of_correlators)
-            geom['number_of_bins_per_frame'] = int(cfg.number_of_bins_per_frame)
-        else:
-            geom['number_of_correlators'] = int(cfg.NCORRS if cfg.has_attr('NCORRS') else 1)
+        geom['number_of_correlators'] = int(cfg.NCORRS if cfg.has_attr('NCORRS') else 1)
         return geom
 
     def _write_hdf5_from_result(self, result):

@@ -16,10 +16,10 @@
         "Intended Audience :: Science/Research",
         ]
     dynamic=["version"]
+    # Forked from pychfpga by JF Cliche (McGill University / Winterland Cosmology):
+    # https://bitbucket.org/winterlandcosmology/pychfpga
     authors = [
-        { name = "McGill University"},
-        { name = "JF Cliche", email = "vhdl@jfcliche.com" },
-        { name = "t0.technology"},
+        { name = "t0.technology" },
         ]
     requires-python = "==3.12.*"
     readme = "README.md"

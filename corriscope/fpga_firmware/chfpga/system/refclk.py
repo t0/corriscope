@@ -58,18 +58,8 @@ class REFCLK(MMI):
         self.set_sync_delays(1)
         self.logger = logging.getLogger(__name__)
 
-        # If the board is not present, disable SYNC detection on REFCLK to
-        # prevent noise on the floating REFCLK lien to generate spurious
-        # resets.
-
-        # self.ENABLE_SYNC_DETECTION = 1
-        # self.ENABLE_SYNC_GENERATION = 1
-        if self.fpga.HAS_FMC and self.fpga.is_fmc_present(0):
-            self.logger.debug(f'{self.fpga!r}:   REFCLK is using the 10 MHz reference clock from the ADC board')
-            self.REFCLK_SEL = 0  # Use REFCLK coming from the FMC
-        else:
-            self.logger.debug(f'{self.fpga!r}:   REFCLK is using the 10 MHz reference clock from FPGA since the ADC board is not present in FMC slot 0')
-            self.REFCLK_SEL = 1  # Use internally generated REFCLK
+        # The CRS has no FMC reference-clock input: always use the internally generated 10 MHz REFCLK.
+        self.REFCLK_SEL = 1
 
     SYNC_SOURCE_TABLE = {
         'local': 0,  # No external trigger, software only
@@ -78,8 +68,8 @@ class REFCLK(MMI):
         'irigb': 3,  # Output of the IRIG-B timestamp comparator
         'bp_time': 4,  # Backplane time signal
         'bp_gpio_int': 5,  # backplane GPIO interrupt line
-        'sma_a': 6,  # IceBoard SMA_A
-        'sma_b': 7}  # Iceboard SMA B
+        'sma_a': 6,  # SMA_A input
+        'sma_b': 7}  # SMA_B input
 
     def set_sync_source(self, source):
         """ Set the source of the SYNC signal."""
@@ -163,7 +153,7 @@ class REFCLK(MMI):
         Parameters:
 
         delay (tuple): (mez0_delay, mezz1_delay) tuple specifying the SYNC
-            delay for each mezzanine. Valid range for delay values is 0-31.
+            delay for each reference-clock input. Valid range for delay values is 0-31.
             If delay is None, the SYNC delays are set to the stored
             sync_delay.
         """
@@ -182,14 +172,14 @@ class REFCLK(MMI):
 
     def get_refclk_delay(self):
         """
-        Get the current delays on the Mezzanine Reference clock for both mezzanines.
+        Get the current delay taps applied on the two reference-clock inputs (REFCLK0, REFCLK1).
         """
         return (self.REFCLK0_DELAY, self.REFCLK1_DELAY)
 
     def set_refclk_delay(self, delay):
         """
-        Sets the delay applied on the Mezzanine Reference clock of the two
-        mezzanines as they enter the FPGA. Valid range is 0-31. These delays
+        Sets the delay taps applied on the two reference-clock inputs (REFCLK0,
+        REFCLK1) as they enter the FPGA. Valid range is 0-31. These delays
         are used to scan the ADC clock waveform and to set the ADC SYNC
         timing.
         """

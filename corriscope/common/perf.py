@@ -124,7 +124,7 @@ class Perf:
             perf.get_delay()
             perf.get_delay('ping', 'open platform')
             perf.get_delay(from_='hardware map')
-            perf.get_delay(to='mezzanines')
+            perf.get_delay(to='hardware map')
         """
         if not self.times:
             raise RuntimeError('Perf.get_delay() with no recorded phases')

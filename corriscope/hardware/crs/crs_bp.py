@@ -24,7 +24,7 @@ class CRSBackplane(Crate):
     CRATE_REVISION = '1'
     CRATE_SERIAL_NUMBER_LENGTH = 3
 
-    # PCB link topology is not modeled yet; stubs keep ICE-style callers working.
+    # PCB link topology is not modeled yet; stubs keep the link-map callers working.
     _BP_RX_TO_TX_MAP = {}
     _BP_TX_TO_RX_MAP = {}
     _BP_RX_NET_LENGTH = {}

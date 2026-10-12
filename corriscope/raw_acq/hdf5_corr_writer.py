@@ -13,8 +13,7 @@ class HDF5CorrWriter(object):
     """Object representing a HDF5 file containing N-squared correlation data.
 
     UCORR integrations arrive pre-formatted as ``(NBINS, NPROD)`` arrays
-    (``capture_engine='UCORR'``).  Legacy ICE correlators use raw
-    ``(CORR, CMAC, PROD)`` arrays remapped through ``CORR.get_raw_corr_map()``.
+    (``capture_engine='UCORR'``, the only engine supported).
     """
     def __init__(self,
                  base_dir='.',
@@ -23,7 +22,8 @@ class HDF5CorrWriter(object):
                  autocorr_only=False,
                  elements_per_file=256,
                  n_freq_bins=1024,
-                 capture_engine='ICE',
+                 capture_engine='UCORR',
+                 instrument_name='CRS',
                  number_of_correlators=None,
                  number_of_correlated_inputs=None,
                  number_of_bins_per_frame=None,
@@ -44,6 +44,7 @@ class HDF5CorrWriter(object):
         self.sample_freq = sample_freq
         self.include_counts = include_counts
         self.include_sat = include_sat
+        self.instrument_name = instrument_name
 
         if number_of_correlated_inputs is None:
             raise ValueError('number_of_correlated_inputs (NCHAN) is required')
@@ -92,21 +93,7 @@ class HDF5CorrWriter(object):
 
         self.raw_to_vector_map = None
         if not self.preformatted:
-            if number_of_correlators is None or number_of_bins_per_frame is None:
-                raise ValueError(
-                    'ICE correlator HDF5 requires number_of_correlators and '
-                    'number_of_bins_per_frame')
-            from corriscope.fpga_firmware.chfpga.x_engine.CORR import get_raw_corr_map
-
-            self.log.debug(
-                f'{self!r}: ICE correlator map N={nchan}, '
-                f'Nbins={number_of_bins_per_frame}, Ncorr={number_of_correlators}')
-            _, raw_to_vector_map = get_raw_corr_map(
-                N=nchan,
-                Nbins=number_of_bins_per_frame,
-                Ncorr=number_of_correlators,
-            )
-            self.raw_to_vector_map = raw_to_vector_map[..., self.prod_idx_map]
+            raise ValueError(f'Unsupported capture_engine {capture_engine!r}; only UCORR is supported')
 
         self.start_time = time.time()
 
@@ -142,7 +129,7 @@ class HDF5CorrWriter(object):
 
         self.log.info(f'{self!r}: Opening HDF5 file {self.current_filename}')
         self.f = h5py.File(self.current_filename, 'w', libver='earliest')
-        self.f.attrs["instrument_name"] = "D3A"
+        self.f.attrs["instrument_name"] = self.instrument_name
         self.f.attrs["acquisition_name"] = "corr"
         self.f.attrs["file_name"] = self.base_dir + '/' + self.filename
         self.f.attrs["data_type"] = "correlation data"

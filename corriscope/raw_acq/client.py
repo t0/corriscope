@@ -9,7 +9,7 @@ class RawAcqAsyncRESTClient(AsyncRESTClient):
     """
     Implements an asynchronous client that exposes the functions of the specified remote RawAcq server.
 
-    This client is used by ch_master to start, configue and operate all the RawAcq servers in the array.
+    This client is used by fpga_master to start, configue and operate all the RawAcq servers in the array.
 
     The client is implemented using a Tornado AsyncHTTPClient. It exposes the RawAcq server methods
     (i.e REST endpoints) as local methods. The local methods are Tornados so requests to

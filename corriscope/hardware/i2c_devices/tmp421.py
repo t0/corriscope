@@ -48,7 +48,7 @@ class tmp421(object):
 
         Parameters:
 
-            i2c_interface (I2CInterface): I2C interface object
+            i2c_interface (TCPipe_I2C): I2C interface object
 
             address (int): device address of the temperature sensor
 

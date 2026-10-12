@@ -187,7 +187,7 @@ def test_crs_clock_source_from_pll_input_reference():
     mb = CRS.__new__(CRS)
     mb.input_reference = CRS.PLL_INPUT_BP_CLK_10MHZ
     mb.pll = None
-    assert mb._get_iceboard_clock_source() == "CLOCK_SOURCE_BP"
+    assert mb._get_clock_source() == "CLOCK_SOURCE_BP"
 
 
 def test_legacy_tcpipe_beacon_is_rejected():

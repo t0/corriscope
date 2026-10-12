@@ -7,7 +7,7 @@
 - Lazy loading of hardware platform classes listed in the manifest
   `corriscope/hardware/supported_hardware.py:HARDWARE`. The manifest is read via
   function-local imports from the classmethods below, so it can refer to
-  `Motherboard`/`Crate`/`Mezzanine` (which import `HardwareMap`) without
+  `Motherboard`/`Crate` (which import `HardwareMap`) without
   creating a circular import.
 - Lookups that transparently fall back to the manifest when a class has not
   yet been imported (`get_class_by_name`, `get_class_by_part_number`,
@@ -83,7 +83,7 @@ class HardwareMap:
 
     @classmethod
     def _get_base_class(cls, base_class_name=None):
-        """Return the hardware base class (``Motherboard``/``Crate``/``Mezzanine``)
+        """Return the hardware base class (``Motherboard``/``Crate``)
         for ``cls`` or the one matching ``base_class_name`` when provided.
         """
         return cls._base_hardware_class_registry[base_class_name or cls.__name__]
@@ -97,7 +97,7 @@ class HardwareMap:
         Parameters:
 
             base_class_name (str): restrict to a specific hardware base class
-                (``'Motherboard'``/``'Crate'``/``'Mezzanine'``). Defaults to
+                (``'Motherboard'``/``'Crate'``). Defaults to
                 the caller's base class.
             package (str): restrict to manifest entries whose ``package`` field
                 equals this value (e.g. ``'ice'``). Defaults to no filter.
@@ -123,12 +123,12 @@ class HardwareMap:
 
         Parameters:
 
-            name (str): class name to match (e.g. ``'IceBoard'``).
+            name (str): class name to match (e.g. ``'board'``).
             part_number (str): official part number to match, case-insensitive.
             ipmi_part_number (str): any IPMI part number alias to match,
                 case-insensitive.
             base_class_name (str): restrict the search to a specific hardware
-                base class (``'Motherboard'``/``'Crate'``/``'Mezzanine'``).
+                base class (``'Motherboard'``/``'Crate'``).
                 Defaults to the caller's base class.
 
         Returns:
@@ -211,7 +211,7 @@ class HardwareMap:
             part_number (str): part-number suffix to match. Case-insensitive.
             base_class_name (str): if provided, restrict the search to the
                 named hardware base class. Defaults to searching across every
-                hardware base class (``Motherboard``, ``Crate``, ``Mezzanine``,
+                hardware base class (``Motherboard``, ``Crate``,
                 ...), because a part-number string like ``MGK7BP16`` does not
                 itself indicate which kind of hardware it describes.
 
@@ -274,7 +274,7 @@ class HardwareMap:
             matching class, None if there are no matches. Raises a Runtime
             exception if there are multiple matches.
 
-        Used by discover_crate, discover_mezzanine, mdns_discover
+        Used by discover_crate, mdns_discover
         """
         base_class = cls._get_base_class(base_class_name)
 
@@ -363,7 +363,7 @@ class HardwareMap:
         manifest are not included — use :meth:`get_all_supported_classes` for
         that.
 
-        Used in discover_mezzanine, fpga_array
+        Used in fpga_array
         """
         base_class = cls._get_base_class(base_class_name)
         return list(base_class._class_registry.values())
@@ -374,11 +374,11 @@ class HardwareMap:
         class of ``cls`` (or ``base_class_name``) and return the resulting
         class list. Use this when a caller genuinely needs every possible
         class, not just the ones already loaded (e.g. EEPROM decoders that
-        must try every mezzanine variant).
+        must try every variant).
 
         When ``package`` is given, the result is narrowed to classes declared
         in that subpackage under ``corriscope.hardware`` (e.g. ``package='ice'``
-        to return only Ice-platform mezzanines). This is useful when a
+        to return only one platform package). This is useful when a
         platform-specific routine must iterate over *its own* hardware
         variants, not every variant in the manifest.
         """

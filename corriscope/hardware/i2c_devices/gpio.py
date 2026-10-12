@@ -1,7 +1,7 @@
 """Generic GPIO accessor on top of I2C expander backends."""
 
 class GPIO(object):
-    """Provides a single-point, abstracted access to all GPIO bits found on the IceBoard or IceCrate"""
+    """Provides a single-point, abstracted access to all GPIO bits found on the board or its backplane"""
 
     def __init__(self, gpio_table):
         """Build a GPIO namespace from a signal-to-expander mapping.

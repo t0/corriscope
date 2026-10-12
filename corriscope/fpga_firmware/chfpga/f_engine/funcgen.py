@@ -487,12 +487,7 @@ class FUNCGEN(MMI):
 
     def init(self):
         """ Initializes the function generator """
-        if self.fpga._NUMBER_OF_FMC_SLOTS and not self.fpga.is_fmc_present_for_channel(self.instance_number):
-            # use the function generator if there are FMC slots in the system but the ADC is not present
-            self.set_data_source('buffer')
-            self.set_function('ramp')
-        else:
-            self.set_data_source('adc')  # use the ADC data
+        self.set_data_source('adc')  # use the ADC data
 
         board_cfg = self.fpga.config
 

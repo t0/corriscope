@@ -15,12 +15,12 @@ from corriscope.common import array_methods
 
 class Motherboard(HardwareMap):
     """
-    Hardware base class that defines a generic motherboard (Iceboard or others) with hardware map
+    Hardware base class that defines a generic motherboard with hardware map
     management methods. All motherboards across all Motherboard subclasses are uniquely identified by its model
     number and serial number, and has a network hostname.
 
-    A motherboard can optinally be connected to one crate and have multiple mezzanines. This class defines the HardWare
-    map methods that  create and update Motherboooards while ensuring related Crate and Mezzanines are kept up to date.
+    A motherboard can optionally be connected to one crate. This class defines the hardware
+    map methods that create and update Motherboards while keeping the related Crate up to date.
 
     Since this class inherits directly from HardwareMap, it is treated as a hardware base class and will create a
     class and instance registry to track all subsequent Motherboard subclasses.
@@ -46,9 +46,6 @@ class Motherboard(HardwareMap):
     array_method_class = None
 
     # _cached_repr = None  # Stores a pre-processed string representation of the board repr() for efficiency
-
-    NUMBER_OF_FMC_SLOTS = 0  # Number of supported mezzanines
-    FMC_MEZZ_NUMBERS = () # Logical mezzanine numbers
 
     port = None  # port number on which to access the platform `hostname`. Must be defined by subclasses. Is used by fpga_master.
 
@@ -153,7 +150,6 @@ class Motherboard(HardwareMap):
         self.extra_hwm_args = kwargs
 
         self.crate = None  # Crate (or backplane) object on which the motherboard is mounted
-        self.mezzanine = {}  # Mezzanines attached to this motherboard ({slot:mezz_object, ...})
 
         super().__init__()
 
@@ -256,7 +252,7 @@ class Motherboard(HardwareMap):
 
 
         All creation and update operations maintain the integrity of the
-        references between Motherboards, Crates and Mezzanines.
+        references between Motherboards and Crates.
 
         Use this method to create Motherboard objects instead of instantiating
         them directly from the target class in order to maintain the hardware
@@ -338,7 +334,7 @@ class Motherboard(HardwareMap):
         subclass instance.
 
         If the class is changed, the parameters of the old class are copied
-        into the new class, the crate and mezzanines references are updated to
+        into the new class, the crate references are updated to
         the new instance, and the old instance is deleted.
 
         Parameters:
@@ -379,10 +375,6 @@ class Motherboard(HardwareMap):
             other = new_class(serial=serial, hostname=hostname, slot=slot, subarray=subarray, **extra_hwm_args)
             self.logger.debug(f"{self!r}: Updating newly created instance...")
             other.update_instance(crate_number=crate_number, crate=self.crate)  # update crate and backrefs
-            # Update Mezzanine references to the new instance
-            for fmc, mezz in self.mezzanine.items():
-                other.mezzanine[fmc] = mezz
-                mezz.iceboard = other
             self.delete_instance()
             return other
         else:  # otherwise update serial and hostname
@@ -439,7 +431,7 @@ class Motherboard(HardwareMap):
         return self.crate.crate_number
 
     def get_id(self, lane=None, default_crate=None, default_slot=None, numeric_only=False):
-        """ Returns a (crate, slot) tuple representing a unique IceBoard ID,
+        """ Returns a (crate, slot) tuple representing a unique board ID,
         using numeric values whenever possible. A `lane` field can be
         optionally appended to the tuple to create channel/lane IDs.
 

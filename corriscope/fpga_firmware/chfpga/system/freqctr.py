@@ -193,7 +193,7 @@ class FreqCtr(MMI):
         gpu_txclk = self.read_frequency('GPU_TXCLK', gate_time=gate_time)
 
         print('System Frequencies:')
-        print(f'   IceBoard Reference clock source: {fpga.mb.get_iceboard_clock_source_sync()}')
+        print(f'   Reference clock source: {fpga.mb.get_clock_source_sync()}')
         print(' External clock sources')
         print(f"   RAW CLK (no PLL, SE):     {self.read_frequency('RAW_CLK', gate_time=gate_time) / 1000000.0:7.3f} MHz")
         print(f"   Reference clock (via PLL):{self.read_frequency('CLK10', gate_time=gate_time) / 1000000.0:7.3f} MHz")
@@ -211,22 +211,8 @@ class FreqCtr(MMI):
         print(f"   Correlator:               {self.read_frequency('CORR_CLK', gate_time=gate_time) / 1000000.0:7.3f} MHz")
         print(f'   BP Shuffle TX word clock: {bp_shuffle_txclk / 1000000.0:7.3f} MHz ({bp_shuffle_txclk * 32 * 32 / 33 / 1000000000.0:0.3f} Gbps)')
         print(f'   GPU link TX word clock:   {gpu_txclk / 1000000.0:7.3f} MHz ({gpu_txclk * 32 * 32 / 33 / 1000000000.0:0.3f} Gbps)')
-        for fmc in range(mb.NUMBER_OF_FMC_SLOTS):
-            if mb.is_fmc_present(fmc):
-                fmc_name = 'FMC' + chr(ord('A') + fmc)
-                print(f' {fmc_name} clocks')
-                freq_refclk = self.read_frequency(f'{fmc_name}_REFCLK', gate_time=gate_time) / 1e6
-                freq_mgt0 = self.read_frequency(f'{fmc_name}_MGT_PLL_REFCLK0', gate_time=gate_time) / 1e6
-                freq_mgt1 = self.read_frequency(f'{fmc_name}_MGT_PLL_REFCLK1', gate_time=gate_time) / 1e6
-                print(f'   {fmc_name} Reference:           {freq_refclk:7.3f} MHz')
-                print(f'   {fmc_name} MGT PLL Ref clock 0: {freq_mgt0:7.3f} MHz')
-                print(f'   {fmc_name} MGT PLL Ref clock 1: {freq_mgt1:7.3f} MHz')
-            else:
-                print(f' {fmc_name}: Not present')
-
         print(' ADC clocks')
         for i in range(fpga.NUMBER_OF_ADCS or fpga.NUMBER_OF_CHANNELIZERS):
-            # print('   ADC%02i clock:              %7.3f MHz%s' % (i, self.read_frequency('ADC_CLK%i' % i, gate_time=gate_time) / 1e6, '' if fpga.is_fmc_present(0) else ' (No ADC board in FMCA - Cannot clock the channelizers)'))
             adc_mhz = self.read_frequency(f'ADC_CLK{i}', gate_time=gate_time) / 1e6
             print(f'   ADC{i:02d} clock:              {adc_mhz:7.3f} MHz')
         print(f'   Resolution:     {resolution / 1000000.0:10.6f} MHz')

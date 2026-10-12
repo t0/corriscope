@@ -135,8 +135,6 @@ class chFPGAArrayMethods(ArrayMethods):
             prog=None,
             init=None,
             if_ip=None,
-            fpga_ip_addr_fn=None,
-            udp_retries=10,
             sync_method=None,
             sync_source=None,
             sync_master=None,
@@ -173,8 +171,6 @@ class chFPGAArrayMethods(ArrayMethods):
                 here; FPGAArray pops it before calling this method.
             prog: Same as ``bitfile``.
             if_ip: Used by FPGAArray while opening MMI, not here.
-            fpga_ip_addr_fn: Same as ``if_ip``.
-            udp_retries: Popped by FPGAArray before calling this method.
             init (int or None): Firmware init level. ``None`` becomes ``3``
                 if ``mode`` is set, else ``0``. Values below 3 skip firmware
                 init (FPGAArray may already have programmed and opened the
@@ -695,7 +691,7 @@ class chFPGAArrayMethods(ArrayMethods):
                     bad_mb = [mb for i, mb in enumerate(self.ib) if (sync_ctr_after[i] - sync_ctr_before[i]) & 0xf != 1]
                     if bad_mb:
                         bad_boards_str = ','.join(repr(mb) for mb in bad_mb)
-                        raise RuntimeError(f'The following IceBoards did not SYNC properly: {bad_boards_str}')
+                        raise RuntimeError(f'The following boards did not SYNC properly: {bad_boards_str}')
 
                 if self._sync_method in self.IRIGB_SYNC_METHODS:
                     self._sync_timestamps = ts = await self.ib.get_irigb_time_async(
@@ -746,17 +742,17 @@ class chFPGAArrayMethods(ArrayMethods):
 
             None
         """
-        clock_sources = await self.ib.get_iceboard_clock_source_async()
+        clock_sources = await self.ib.get_clock_source_async()
         bad_clock_source_without_crate = [i for i, source in enumerate(clock_sources) if not self.ib[i].crate and source == 'CLOCK_SOURCE_BP']
         bad_clock_source_with_crate = [i for i, source in enumerate(clock_sources) if self.ib[i].crate and source != 'CLOCK_SOURCE_BP']
 
         if bad_clock_source_without_crate:
             msg = ', '.join(f'{self.ib[i]!r}=>{clock_sources[i]}' for i in bad_clock_source_without_crate)
-            self.logger.warning(f'The following IceBoards are in not in crates but are configured to use the backplane clock: {msg}')
+            self.logger.warning(f'The following boards are in not in crates but are configured to use the backplane clock: {msg}')
 
         if bad_clock_source_with_crate:
             msg = ', '.join(f'{self.ib[i]!r}=>{clock_sources[i]}' for i in bad_clock_source_with_crate)
-            raise RuntimeError(f'The following IceBoards are in crates but are not configured to use the backplane clock: {msg}')
+            raise RuntimeError(f'The following boards are in crates but are not configured to use the backplane clock: {msg}')
 
     #####################################################
     # Raw capture and Correlator engine configuration methods
@@ -881,7 +877,7 @@ class chFPGAArrayMethods(ArrayMethods):
             It is not possible to reset just one QSFP or a specific lane.
             All lanes of both QSFPs on a selected board are reset.
         """
-        ibs = self.fpga_array.get_iceboards(board_ids)
+        ibs = self.fpga_array.get_boards(board_ids)
         for mb in ibs:
             mb.reset_gpu_links()
             await asyncio.sleep(0)
@@ -950,7 +946,7 @@ class chFPGAArrayMethods(ArrayMethods):
 
             board: Target board: serial string (with leading zeros),
                 motherboard object, or ``(crate, slot)`` id as accepted by
-                :meth:`~corriscope.fpga_array.FPGAArray.get_iceboard`. Falsy
+                :meth:`~corriscope.fpga_array.FPGAArray.get_board`. Falsy
                 (``None``, ``''``) skips setup and returns immediately.
 
             enable (bool): If True, enable PWM and route it to ``output``.
@@ -976,7 +972,7 @@ class chFPGAArrayMethods(ArrayMethods):
         if not board:
             return
 
-        mb = self.get_iceboard(board)
+        mb = self.get_board(board)
 
         if enable:
             mb.set_user_output_source('pwm', output=output)
@@ -1006,7 +1002,7 @@ class chFPGAArrayMethods(ArrayMethods):
         """Get the current state of a user output and the source driving it.
 
         Used by fpga_master to report noise-injection PWM status. Resolves
-        ``board`` with :meth:`~corriscope.fpga_array.FPGAArray.get_iceboard`.
+        ``board`` with :meth:`~corriscope.fpga_array.FPGAArray.get_board`.
 
         Parameters:
             board (tuple or list or str or Motherboard): Target board:
@@ -1031,7 +1027,7 @@ class chFPGAArrayMethods(ArrayMethods):
         if not board:
             return status
 
-        mb = self.get_iceboard(board)
+        mb = self.get_board(board)
         output_source = mb.get_user_output_source(output)
         offset, high_time, period, reset = mb.get_pwm()
         user_bit0, user_bit1 = mb.get_user_bits()
@@ -1070,7 +1066,7 @@ class chFPGAArrayMethods(ArrayMethods):
     # Gain management methods
     #####################################################
 
-    async def load_gains_async(self, bank=0, gain_folder='/home/chime/ch_acq/gains'):
+    async def load_gains_async(self, bank=0, gain_folder='gains'):
         """Load digital-gain files for every board of the array.
 
         If a board-specific file is missing, ``default_gains.pkl`` in
@@ -1117,7 +1113,7 @@ class chFPGAArrayMethods(ArrayMethods):
                 array_gains[board_id] = board_gains
         return (array_gains)
 
-    async def save_gains_async(self, gains, gain_folder='/home/chime/ch_acq/gains'):
+    async def save_gains_async(self, gains, gain_folder='gains'):
         """Write digital-gain files for the boards present in ``gains``.
 
         Does not program the FPGAs. Channel-keyed maps are regrouped with
@@ -1139,7 +1135,7 @@ class chFPGAArrayMethods(ArrayMethods):
         # make sure we have a board-id-based gain table
         gains = self.group_gains_per_board_id(gains)
         for board_id, board_gains in gains.items():
-            mb = self.fpga_array.get_iceboard(board_id)
+            mb = self.fpga_array.get_board(board_id)
             mb.save_gains(gains=board_gains, folder=gain_folder)
 
     async def get_gains_async(self, bank=0, use_cache=True):
@@ -1237,7 +1233,7 @@ class chFPGAArrayMethods(ArrayMethods):
         # set the gains for each board
         for board_id, g in gains.items():
             gain_timestamp = gain_timestamps[board_id] if isinstance(gain_timestamps, dict) else gain_timestamps
-            mb = self.fpga_array.get_iceboard_from_id(board_id)
+            mb = self.fpga_array.get_board_from_id(board_id)
             self.logger.debug(f'{self.fpga_array!r}: Setting digital gains for (crate,slot)={board_id} ({mb.get_formatted_id()})')
             mb.set_gains(gain=g, bank=bank, when=None, gain_timestamp=gain_timestamp)
             await asyncio.sleep(0)
@@ -1571,7 +1567,7 @@ class chFPGAArrayMethods(ArrayMethods):
 
             - Backplane metrics, as measured from one board in each crate
             - Motherboard hardware metrics (voltages, temperatures), including
-              mezzanine voltage/current
+              board voltage/current
             - FPGA UDP MMI metrics, for boards that have an ``fpga`` object
 
         Parameters:
@@ -1594,9 +1590,6 @@ class chFPGAArrayMethods(ArrayMethods):
         m = await self.ib.get_metrics_async()
         metrics += m
         self.logger.debug(f'{self.fpga_array!r}: Got {len(m)} Motherboard temperature & power supply metrics')
-        fpga_ibs = Ccoll(mb for mb in self.ib if mb.fpga)
-        if fpga_ibs:
-            metrics += await fpga_ibs.get_fpga_udp_metrics_async()
 
     async def get_fpga_metrics_async(self, metrics, reset=True):
         """Append FPGA firmware status metrics across the array to ``metrics``.
@@ -1906,14 +1899,14 @@ class chFPGAArrayMethods(ArrayMethods):
             print('SYNC Test has PASSED!')
 
 
-    def print_iceboard_power(self):
+    def print_board_power(self):
         """Print total motherboard power (W) for every board as a crate/slot table.
 
         Returns:
 
             None
         """
-        self.print_iceboard_table(lambda mb: f'{mb.get_total_power():0.1f}')
+        self.print_board_table(lambda mb: f'{mb.get_total_power():0.1f}')
 
 
     def print_temperatures(self):
@@ -1928,7 +1921,7 @@ class chFPGAArrayMethods(ArrayMethods):
         for (slot, serial_number, fpga_temp) in t:
             print(f'Slot {int(slot):2} (SN{serial_number}): FPGA {fpga_temp:2.1f} C')
 
-    def print_iceboard_info(self):
+    def print_board_info(self):
         """Gather motherboard metrics and print them as a crate/slot table.
 
         Returns:
@@ -1936,10 +1929,10 @@ class chFPGAArrayMethods(ArrayMethods):
             None
         """
         if not self.ib:
-            print('There are no IceBoards in the array')
+            print('There are no boards in the array')
             return
         info = [i for (i, _) in self.ib._get_motherboard_metrics_async()]
         keys = '\n'.join(info[0].keys())
         data = {mb: ('\n'.join(info[i].values())) for i, mb in enumerate(self.ib)}
-        self.print_iceboard_table(data, row_labels=keys)
+        self.print_board_table(data, row_labels=keys)
 

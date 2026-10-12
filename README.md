@@ -29,6 +29,8 @@ What was removed relative to pychfpga (first pass, behaviour of the CRS path kep
   IceBoard `ADCDAQ` / `PROBER` / `CORR44` / FPGA-side SPI and I2C firmware modules.
 - ADC delay calibration, mezzanine power sequencing and the `iceboards` / `icecrates` /
   `exclude_iceboards` / `no_mezz` parameters of `FPGAArray`.
+- The FMC mezzanine plumbing, the direct FPGA UDP (BSB over UDP) transport and the non-CRS platform IDs:
+  the CRS talks to the FPGA through TCPipe only.
 - The periscope Qt app, docs, qc and firmware simulations.
 - The package was renamed `pychfpga` -> `corriscope`; everything else keeps its module path.
 

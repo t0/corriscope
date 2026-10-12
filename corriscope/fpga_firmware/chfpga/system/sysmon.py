@@ -59,14 +59,7 @@ class SYSMON(MMI):
         super().__init__(router=router, router_port=router_port)
         self.config = config
         fpga = self.fpga
-        self.supported_by_platform = fpga.PLATFORM_ID in (
-            fpga._PLATFORM_ID_ML605,
-            fpga._PLATFORM_ID_KC705,
-            fpga._PLATFORM_ID_MGK7MB_REV0,
-            fpga._PLATFORM_ID_MGK7MB_REV2,
-            fpga._PLATFORM_ID_ZCU111,
-            fpga._PLATFORM_ID_CRS,
-            )
+        self.supported_by_platform = fpga.PLATFORM_ID == fpga._PLATFORM_ID_CRS
 
         self._lock()  # Prevent accidental addition of attributes
 
@@ -133,13 +126,6 @@ class SYSMON(MMI):
 
             self.logger.info(f'{self.fpga!r}:   VccAUX Voltage:     {self.voltage(self.VCCAUX_ADDR):5.2f} V ({self.voltage(self.VCCAUX_MIN_ADDR):.2f} V min, {self.voltage(self.VCCAUX_MAX_ADDR):.2f} V max)')
 
-            if self.fpga.PLATFORM_ID == self.fpga._PLATFORM_ID_ML605:
-                self.logger.info(f'{self.fpga!r}:   VccINT Current:     {self.voltage(self.VAUX_VPVN_ADDR, vref=1.0) / 0.005:5.2f} A, (ADC input= {self.voltage(self.VAUX_VPVN_ADDR, vref=1.0) * 1000:.2f} mV')
-
-                self.logger.info(f'{self.fpga!r}:   12V Supply Voltage: {Vin:5.2f} V (ADC input={self.voltage(self.VAUX_VOLT_ADDR, vref=1.0):.2f} V )')
-
-                self.logger.info(f'{self.fpga!r}:   12V Supply Current: {Iin:5.2f} A (ADC input={self.voltage(self.VAUX_CURR_ADDR, vref=1.0):.2f} V )')
-                self.logger.info(f'{self.fpga!r}:   12V Power         : {Vin * Iin:5.2f} W ')
 
             self.logger.info(f'{self.fpga!r}:   VREFP Voltage:      {self.voltage(self.VAUX_VREFP_ADDR):5.2f} V')
             self.logger.info(f'{self.fpga!r}:   VREFN Voltage:      {self.voltage(self.VAUX_VREFN_ADDR):5.2f} V')

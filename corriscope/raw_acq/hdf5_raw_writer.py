@@ -20,7 +20,8 @@ class HDF5RawWriter(object):
                  chunk_size=1024,
                  storage_dtype='i1',
                  samples_per_frame=None,
-                 nbytes_per_frame=None):
+                 nbytes_per_frame=None,
+                 instrument_name='CRS'):
         self.log = log.get_logger(self)
         if samples_per_frame is None:
             if nbytes_per_frame is None:
@@ -28,6 +29,7 @@ class HDF5RawWriter(object):
             samples_per_frame = int(nbytes_per_frame)
             storage_dtype = 'i1'
         self.storage_dtype = np.dtype(storage_dtype)
+        self.instrument_name = instrument_name
         self.N_SAMP = int(samples_per_frame)
         self.base_dir = base_dir
         self.filename = filename
@@ -64,7 +66,7 @@ class HDF5RawWriter(object):
         self.f.attrs["git_version_tag"] = "0.1"
         self.f.attrs["system_user"] = "root"
         self.f.attrs["collection_server"] = "hostname"
-        self.f.attrs["instrument_name"] = "CHIME"
+        self.f.attrs["instrument_name"] = self.instrument_name
         self.f.attrs["acquisition_name"] = "rawadc"
         self.f.attrs["archive_version"] = "2.4.0"
         self.f.attrs["file_name"] = self.current_filename  # was filestring

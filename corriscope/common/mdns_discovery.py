@@ -3,9 +3,9 @@
 
 # Standard library
 import logging
-import functools  # Used in iceboard discovery
-import time  # Used in iceboard discovery
-import socket  # used in iceboard discovery (itoa())
+import functools  # Used in board discovery
+import time  # Used in board discovery
+import socket  # used in board discovery (itoa())
 import asyncio
 import threading # Used for Rlock
 
@@ -69,7 +69,7 @@ async def mdns_discover(
         clear_hwm=False,
         case_sensitive=False,
         retries=2):
-    """ Automatically detect IceBoards and IceCrates on the network using mDNS
+    """ Automatically detect boards and crates on the network using mDNS
     and add them to the hardware map.
 
     Parameters:

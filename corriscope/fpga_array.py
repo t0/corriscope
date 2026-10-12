@@ -61,12 +61,6 @@ from corriscope.hardware import HardwareMap, Motherboard, Crate
 
 class FPGAArray(object):
 
-    # Map the string to the function that computes the FPGA IP address from the ARM IP address
-    FPGA_IP_ADDR_FN_TABLE = {
-        '(a,b,3,d)': lambda a, b, c, d: (a, b, 3, d),
-        '(a,b,c+1,d)': lambda a, b, c, d: (a, b, c + 1, d),
-    }
-
     # -------------------------------------------------------------------------
     # Array-wide operations (see :class:`corriscope.common.array_methods.ArrayMethods`).
     #
@@ -178,8 +172,6 @@ class FPGAArray(object):
             prog=None,
             init=None,
             if_ip=None,
-            udp_retries=10,
-            fpga_ip_addr_fn='(a,b,3,d)',
 
             sampling_frequency=None,
             # reference_frequency=10e6,
@@ -239,7 +231,7 @@ class FPGAArray(object):
                 - *HardwareMap*: Fully formed hardware map, provided directly as a
                   HardwareMap database object. If a fully-formed hardware map is
                   provided, it will additionally be vetted by removing the
-                  Iceboards that fail the `ping` test and do not meet the
+                  boards that fail the `ping` test and do not meet the
                   ``subarray`` criteria.
 
 
@@ -250,12 +242,12 @@ class FPGAArray(object):
 
             subarrays (list): List of integers describing the subarrays to include in
                 the default Motherboard set. If None, all
-                Iceboards in the hardware map will be selected. Affects only the
+                boards in the hardware map will be selected. Affects only the
                 boards specified in the hardware map specified with the ``hwm`` parameter.
 
-            ping (int): If ``ping=1``, The connection to Iceboards is checked
+            ping (int): If ``ping=1``, The connection to boards is checked
                 by sending a dummy Tuber (http) request to their ARM processors. If a
-                YAML-specified iceboards fails, it is simply removed from the
+                YAML-specified boards fails, it is simply removed from the
                 ``hwm`` hardware map, but an exception is raised if a board listed
                 explicitely fails. If ``ping`` is false, the presence of boards is not
                 checked.
@@ -316,23 +308,7 @@ class FPGAArray(object):
                 the same interface that reaches the platform on-board processor.
 
 
-            udp_retries (int): Number of retries performed when UDP command
-                packets sent to the FPGA do not receive a response. Applies
-                only to platform that feature direct UDP communication with
-                the FPGA.
-
-            fpga_ip_addr_fn (str): For platforms featuring direct UDP
-                connection with the FPGA, specifies how the FPGA IP address is
-                determined. The valid modes are shown below, and should be
-                types exactly without additional spaces. In those modes,
-                ``a.b.c.d`` corresponds to the IP address of the IceBoard ARM
-                processor.
-
-                - '(a,b,3,d)': Uses the IP address of the ARM but replaces the third byte by ``3``
-                - '(a,b,c+1,d)': Uses the IP address of the ARM but adds 1 to the third byte
-
-
-            sync_method (str): Method used to synchronize (to sync) the data acquisition on an array of boards:
+\1 (to sync) the data acquisition on an array of boards:
 
                 - 'local': Syhchronize each board individually by software trigger. There is no synchronicity between boards.
                 - 'irigb': uses the IRIG-B time signal to perform an array-wide synchronization. The source of the IRIG-B signal can be specified in `sync_source`.
@@ -367,7 +343,7 @@ class FPGAArray(object):
             tx_power (dict): Initial training and final TX power levels to be
                 assigned to the data links used by the corner turn engine.
                 These include the backplane PCB links between boards in a
-                crate, backplane QSFP links between crates, or iceboard QSFP
+                crate, backplane QSFP links between crates, or board QSFP
                 links that offload  the output of the corner turn engine.
 
 
@@ -430,7 +406,7 @@ class FPGAArray(object):
                 ``pybonjour`` package.
 
                 If an Motherboard is specified by its mDNS hostname (e.g.
-                'iceboard0007.local'), the operating system will automatically
+                'crs0007.local'), the operating system will automatically
                 resolve the IP address using mDNS, assuming that a mDNS client
                 (Bonjour on Windows or Mac, avahi on Linux) is running on this
                 computer. The ``pybonjour`` Python package is *not* needed.
@@ -491,12 +467,10 @@ class FPGAArray(object):
         # Used here for FPGA programming / open; not forwarded to array_init.
         bitfile = kwargs.pop('bitfile', None)
         prog = kwargs.pop('prog', None)
-        udp_retries = kwargs.pop('udp_retries', 10)
         # Bound to locals for repeated use below; left in kwargs for array_init_async.
         mode = kwargs.get('mode')
         init = kwargs.get('init')
         if_ip = kwargs.get('if_ip')
-        fpga_ip_addr_fn = kwargs.get('fpga_ip_addr_fn', '(a,b,3,d)')
 
         self.ib = []  # make sure repr() has always something
         self.ic = []
@@ -558,22 +532,11 @@ class FPGAArray(object):
         # self.logger.info(f'{self!r}:     reference_frequency = {reference_frequency}')
         self.logger.info(f'{self!r}:     sync_method = {kwargs.get("sync_method")}')
         self.logger.info(f'{self!r}:     sync_source = {kwargs.get("sync_source")}')
-        self.logger.info(f'{self!r}:     fpga_ip_addr_fn = {fpga_ip_addr_fn}')
         self.logger.info(f'{self!r}: ------------------------')
         self.perf = Perf()
         self.perf.start('hardware map', description='Parse HWM and build the board list')
 
         __main__._host_interface_ip_addr = if_ip
-
-        # Convert the FPGA IP-setting function name to an actual function.
-        # Result stays in kwargs so array_init_async receives the resolved callable.
-        if fpga_ip_addr_fn in self.FPGA_IP_ADDR_FN_TABLE:
-            kwargs['fpga_ip_addr_fn'] = self.FPGA_IP_ADDR_FN_TABLE[fpga_ip_addr_fn]
-        else:
-            valid_fn = ', '.join(f"'{fn}'" for fn in self.FPGA_IP_ADDR_FN_TABLE)
-            raise AttributeError(
-                f"Invalid 'fpga_ip_addr_fn' string '{fpga_ip_addr_fn}'. "
-                f"Valid strings are  {valid_fn}")
 
         HardwareMap.clear_hardware_map()
         # Bind local ``motherboards`` / ``crates`` to the live ``HardwareMap``
@@ -631,7 +594,7 @@ class FPGAArray(object):
             boards_to_ping = [mb for mb in motherboards if mb.hostname]
             if boards_to_ping:
                 self.perf.start('ping', description='TCP-ping boards with explicit hostnames')
-                # Find iceboards to ping. Use `as_dict` so mb_to_ping does not change as we delete boards from the hwm
+                # Find boards to ping. Use `as_dict` so mb_to_ping does not change as we delete boards from the hwm
                 self.logger.info(f'{self!r}: Pinging {len(boards_to_ping)} Motherboards with explicit hostnames')
                 # TCP-ping boards. Make is an asynchronous parallel call to all boards
                 ping_results = await Ccoll(boards_to_ping).ping_async(timeout=ping_timeout)
@@ -655,36 +618,36 @@ class FPGAArray(object):
                 raise RuntimeError(message)
 
         #######################################################
-        # Adding iceboards with explicit hostnames/IP addresses
+        # Adding boards with explicit hostnames/IP addresses
         #######################################################
         # We now add to the hwm the boards that were specified in the hardware description string.
         #
-        # We first extract iceboards that are explicitely listed with IP addresses or hostname instead of
+        # We first extract boards that are explicitely listed with IP addresses or hostname instead of
         # serial numbers. We can talk to these boards, which means we can figure out everything we
         # need from these boards (serial, crate, slot  etc) right away without requiring us to do
         # mDNS query, which is the last resort (because not all systems might have mDNS support).
 
-        # if hw_table.iceboards:
-        #     self.logger.info('%r: Adding Iceboards listed in hardware description string '
+        # if hw_table.boards:
+        #     self.logger.info('%r: Adding boards listed in hardware description string '
         #                      'with explicit hostnames' % self)
         #     added_mb = []
-        #     for (model, hostname) in list(hw_table.iceboards):  # make a copy: we modify in-place
+        #     for (model, hostname) in list(hw_table.boards):  # make a copy: we modify in-place
         #         if model is None or '.' in str(hostname):  # if it is actually a hostname. Might be an int serial
         #             # remove it. We'll be left with boards that require mDNS...
-        #             hw_table.iceboards.remove((model, hostname))
+        #             hw_table.boards.remove((model, hostname))
         #             # ip_addr = socket.gethostbyname(hostname)  # convert hostname to IP address for faster Tuber access
         #             new_mb = IceBoar.get_unique_instance(hostname=hostname)
         #             added_mb.append(new_mb)
 
         #     # Explicitely listed boards must exist on the network
         #     if ping and added_mb:
-        #         self.logger.info('%r: Pinging Iceboards with explicit hostnames '
+        #         self.logger.info('%r: Pinging boards with explicit hostnames '
         #                          'in the hardware description string' % self)
         #         # ping all boards concurrently
         #         ping_results = await asyncio.gather(*[mb.ping_async(timeout=ping_timeout) for mb in added_mb])
         #         # If *ANY* of the boards failed to respond, raise an exception
         #         if not all(ping_results):
-        #             raise RuntimeError("%r: The following Iceboards could not be pigned: '%s'" % (
+        #             raise RuntimeError("%r: The following boards could not be pigned: '%s'" % (
         #                 self,
         #                 ', '.join('%r (%s)' % (mb, mb.tuber_uri)
         #                           for mb, ping_result in zip(added_mb, ping_results))))
@@ -692,7 +655,7 @@ class FPGAArray(object):
         #         # Resolve hostnames into IP addresses This is not concurrent,
         #         # unfortunately... this is why we checked ping first,
         #         # otherwise it blocks for a long time
-        #         self.logger.info('%r: Resolving IP addresses of Iceboards that passed the ping test' % self)
+        #         self.logger.info('%r: Resolving IP addresses of boards that passed the ping test' % self)
         #         t0 = time.time()
         #         for mb, ping_result in zip(added_mb, ping_results):
         #             if ping_result:
@@ -720,7 +683,7 @@ class FPGAArray(object):
                 discovery_fn = cr.get_network_discovery_function()
                 discovery_groups[discovery_fn]['crates'].append((cr.part_number or '*', cr.serial))
 
-        # Remove iceboards with wildcard serial numbers. Those will be re-added to the hardware map by the network discovery function.
+        # Remove boards with wildcard serial numbers. Those will be re-added to the hardware map by the network discovery function.
         for mb in motherboards:
             if mb.serial == '*':
                 mb.delete_instance()
@@ -847,19 +810,19 @@ class FPGAArray(object):
         ###########################################################################
         # Cleanup hardware map
         ###########################################################################
-        used_icecrates = {mb.crate for mb in motherboards}
-        unused_icecrates = set(crates) - used_icecrates
-        for cr in unused_icecrates:
+        used_crates = {mb.crate for mb in motherboards}
+        unused_crates = set(crates) - used_crates
+        for cr in unused_crates:
             self.logger.warning(f'{self!r}: Removing unused Crate {cr}'
                                 f'(part_number={cr.part_number}, serial={cr.serial}, crate_number={cr.crate_number})')
             cr.delete_instance()
 
-        unresolved_iceboards = [mb for mb in motherboards if not mb.hostname]
-        if unresolved_iceboards:
-            for mb in unresolved_iceboards:
+        unresolved_boards = [mb for mb in motherboards if not mb.hostname]
+        if unresolved_boards:
+            for mb in unresolved_boards:
                 self.logger.info(f'{self!r}: Unresolved {mb}'
                                  f'(part_number={mb.part_number}, serial={mb.serial}, hostname={mb.hostname})')
-            raise RuntimeError(f'Unresolved motherboards {unresolved_iceboards}')
+            raise RuntimeError(f'Unresolved motherboards {unresolved_boards}')
 
         self.logger.info(f'{self!r}: Hardware map is complete')
 
@@ -889,7 +852,7 @@ class FPGAArray(object):
         # Check if all the hardware we wanted is present
         #################################
         # # List all the crates we know about along with their model/serial tuple
-        # # Format: {icecrate_object : (model, integer_serial),...}
+        # # Format: {crate_object : (model, integer_serial),...}
         # current_crates = {c: (c.part_number, self._to_integer(c.serial)) for c in crates}
 
         # # Find if explicitely requested crates were not found
@@ -918,7 +881,7 @@ class FPGAArray(object):
         #################################
         # Check the hardware map for generic objects
         #################################
-        # print(f'Icecrates are: {any(c.part_number for c in crates)}')
+        # print(f'crates are: {any(c.part_number for c in crates)}')
 
         # Check if there are any crate without part number. We use a list
         # comprehension in case any has been overriden with np.any in a pylab
@@ -933,7 +896,7 @@ class FPGAArray(object):
         # Create self.ib and self.ic
         #################################
 
-        # Query the hardware map for all iceboards and icecrates
+        # Query the hardware map for all boards and crates
         # use outerjoin in case there is no crate
         self.ib = sorted(motherboards, key=lambda i: (i.get_crate_number(default=0), i.slot or 0))
         self.ic = sorted({i.crate for i in motherboards if i.crate and i.crate.part_number},
@@ -954,7 +917,7 @@ class FPGAArray(object):
                           if mb.crate else None)
             self.logger.debug(f"{mb}, crate={crate_info}")
 
-        self.print_iceboard_table(add_serial=True)
+        self.print_board_table(add_serial=True)
 
         self.print_flush()
 
@@ -1002,8 +965,6 @@ class FPGAArray(object):
                     self.perf.start('FPGA open', description='Init level 2: Open MMI and PLL_SYNC')
                     try:
                         await self.ib.open_fpga_async(
-                                udp_retries=udp_retries,
-                                fpga_ip_addr_fn=kwargs.get('fpga_ip_addr_fn'),
                                 interface_ip_addr=if_ip,
                                 irigb_source=kwargs.get('sync_source'))
                         break  # it worked, exit the trial loop
@@ -1194,7 +1155,7 @@ class FPGAArray(object):
 
             print()
 
-    def print_iceboard_table(self, func=None, row_labels=None, grid=False, add_serial=True):
+    def print_board_table(self, func=None, row_labels=None, grid=False, add_serial=True):
         """Print a board/crate summary table using only hardware-map metadata."""
 
         if not len(self.ib):
@@ -1211,18 +1172,18 @@ class FPGAArray(object):
         else:
             data = {mb: '' for mb in self.ib}
 
-        iceboards = list(data.keys())
+        boards = list(data.keys())
 
         if row_labels is None:
             row_labels = ''
         if isinstance(row_labels, str):
             row_labels = [row_labels]
 
-        orphan_iceboards = [mb for mb in iceboards if not mb.crate or not mb.crate.serial]
+        orphan_boards = [mb for mb in boards if not mb.crate or not mb.crate.serial]
         corner_label = 'Standalone\nMotherboards'
-        col_labels = [f'Virt. slot {mb.slot}\n{mb.part_number}_SN{mb.serial}\n{mb.hostname}' for mb in orphan_iceboards]
+        col_labels = [f'Virt. slot {mb.slot}\n{mb.part_number}_SN{mb.serial}\n{mb.hostname}' for mb in orphan_boards]
         table = []
-        for mb in orphan_iceboards:
+        for mb in orphan_boards:
             cell = data[mb] if data else ''
             table.append([cell])
         if not any(table):
@@ -1232,7 +1193,7 @@ class FPGAArray(object):
                 table, row_labels=row_labels, col_labels=col_labels,
                 corner_label=corner_label, line_sep=grid)
 
-        valid_crates = list({mb.crate: None for mb in iceboards if mb.crate and mb.crate.serial}.keys())
+        valid_crates = list({mb.crate: None for mb in boards if mb.crate and mb.crate.serial}.keys())
 
         for crate in valid_crates:
             corner_label = f'{crate.get_string_id()}\nCrate #{crate.crate_number}'
@@ -1325,7 +1286,7 @@ class FPGAArray(object):
 
                    {"class": class_name, "arg1":arg1, ...}
 
-                ``class_name`` is a string describing the name of a Motherboard or Crate subclass (e..g IceBoard, ZCU111, IceCrate etc.).
+                ``class_name`` is a string describing the name of a Motherboard or Crate subclass (e..g board, ZCU111, crate etc.).
 
                 ``"arg1":arg1`` are the arguments passed to the class
                 constructor. Arguments that are not needed directly by the
@@ -1342,7 +1303,7 @@ class FPGAArray(object):
             'Crate' etc.).  In this case, their class will be updated based on
             self-discovery.
 
-            'IceBoard'-type of objects can take the additional ``crate_number``
+            'board'-type of objects can take the additional ``crate_number``
             object, which will link to an existing crate object with the same
             number, or will create a generic one that will be resolved in the
             self-discovery process.
@@ -1369,7 +1330,7 @@ class FPGAArray(object):
                 # The crate can have a serial number, crate number, or both
                 Crate.get_unique_instance(new_class=crate_cls, **params)
 
-        # Second pass: Create the IceBoards, and link them to the crates
+        # Second pass: Create the boards, and link them to the crates
         for hwm_entry in hwm:
             self.logger.debug(f'Processing hwm entry {hwm_entry}')
 
@@ -1397,7 +1358,7 @@ class FPGAArray(object):
         # not the hardware map, but represents the entries that we want to add
         # to the hardware map later.
         # remap_table = {
-        #     'crates': {(crate_number,): ('icecrates', (model, serial, crate_number))
+        #     'crates': {(crate_number,): ('crates', (model, serial, crate_number))
         #                for crate_number, (model, serial) in crate_map.items()}}
 
         logger = self.logger
@@ -1496,16 +1457,16 @@ class FPGAArray(object):
         # # Create a *reverse* crate map ({(model,serial):number} instead of {number:(model,serial)})
         # # that will be used later with set_crate_numbers() to assign crate numbers to crates if
         # # those were not already expressed explicitely in the hw_string (e.g. if the crate is
-        # # specified by serial number or was auto-detected from a specified iceboard)
+        # # specified by serial number or was auto-detected from a specified board)
         # if crate_map:  # If we already explicitely provided a crate map, use it.
         #     crate_number_map = {(model, serial): crate_number for crate_number, (model, serial) in crate_map.items()}
         # else:  # if not, try to build one from the info that was provided in the hw description string
         #     # If some crate numbers are specified or if there are crate wildcards, just use the
         #     # crate numbers that user specified
-        #     if any(crate_number is not None or serial is '*' for (model, serial, crate_number) in hw_table.icecrates):
+        #     if any(crate_number is not None or serial is '*' for (model, serial, crate_number) in hw_table.crates):
         #         crate_number_map = {
         #             (model, serial): crate_number
-        #             for (model, serial, crate_number) in hw_table.icecrates
+        #             for (model, serial, crate_number) in hw_table.crates
         #             if crate_number is not None and serial != '*'}
         #     # If no crate number was specified at all and there are no wildcards, assign crate
         #     # numbers in the order they were specified in the hw description string (first crate =
@@ -1513,12 +1474,12 @@ class FPGAArray(object):
         #     else:
         #         crate_number_map = {
         #             (model, serial): i
-        #             for i, (model, serial, crate_number) in enumerate(hw_table.icecrates)}
-        # self.logger.debug('%r: The Icecrate map is %s' % (self, crate_number_map))
+        #             for i, (model, serial, crate_number) in enumerate(hw_table.crates)}
+        # self.logger.debug('%r: The crate map is %s' % (self, crate_number_map))
 
-        # # We've got our crate numbers. Remove them from the icecrate list so we pass only the (model,
+        # # We've got our crate numbers. Remove them from the crate list so we pass only the (model,
         # # serial) to the mdns discovery function.
-        # hw_table.icecrates = [(model, serial) for (model, serial, crate_number) in hw_table.icecrates]
+        # hw_table.crates = [(model, serial) for (model, serial, crate_number) in hw_table.crates]
 
     # def set_crate_numbers(self, crate_number_map, strict=True):
     #     """ Set the crate number of each crate based on the provided crate
@@ -1545,7 +1506,7 @@ class FPGAArray(object):
     #     self.logger.info('%r: Setting crate numbers for the following crates %s'
     #                      % (self, ', '.join(repr(cr) for cr in self.ic)))
 
-    #     for cr in IceCrates:
+    #     for cr in crates:
     #         model = cr.part_number
     #         sn = cr.serial
     #         try:
@@ -1574,7 +1535,7 @@ class FPGAArray(object):
         """ Returns the channel IDs of every board and channel in the array """
         return [cid for mb in self.ib for cid in mb.get_channel_ids()]
 
-    def get_iceboard(self, board):
+    def get_board(self, board):
         """ Return the Motherboard specified by tuple or serial number.
 
         Parameters:
@@ -1617,12 +1578,12 @@ class FPGAArray(object):
         else:
             raise AttributeError(f'{self!r}: Invalid Motherboard specification {board}')
 
-    def get_iceboard_from_id(self, id):
+    def get_board_from_id(self, id):
         """ return the Motherboard corresponding to the specified (crate,slot) tuple. ``slot`` is zero-based.
         """
-        return self.get_iceboard(id)
+        return self.get_board(id)
 
-    def get_iceboards(self, board_ids=None, lane_type=None):
+    def get_boards(self, board_ids=None, lane_type=None):
         """
         Return the Motherboard object(s) corresponding to the board ID tuples or
         dict specified in `mb` , including wildcards.
@@ -1640,7 +1601,7 @@ class FPGAArray(object):
 
         Returns:
             if `lane_type` is None: list of Motherboard objects
-            otherwise: a dict of {iceboard_object:set_of_lanes, ...}
+            otherwise: a dict of {board_object:set_of_lanes, ...}
 
         Notes:
 
@@ -1653,7 +1614,7 @@ class FPGAArray(object):
         if board_ids is None:
             return self.ib
 
-        iceboards = {}  # List of matching iceboards and corresponding lane/channels
+        boards = {}  # List of matching boards and corresponding lane/channels
         for board_id in board_ids:
             # First extract the crate/slot/lane from the identifier
             crate_number = None
@@ -1683,13 +1644,13 @@ class FPGAArray(object):
             slot_number = None if slot_number == '*' else slot_number
             lane_number = None if lane_number == '*' else lane_number
 
-            # print('get_iceboard: looking for ', crate_number, slot_number)
+            # print('get_board: looking for ', crate_number, slot_number)
             for mb in self.ib:
                 crate, slot = mb.get_id()
                 # print('   checking', mb_id)
                 if (crate_number is None or crate_number == crate) and (slot_number is None or slot_number == slot):
                     # get the Motherboard's lanes. Create an entry with an emply list if it does not exist
-                    lanes = iceboards.setdefault(mb, set())
+                    lanes = boards.setdefault(mb, set())
                     if lane_type is not None:
                         if lane_type in ('channel', 'chan'):
                             valid_lanes = mb.get_channels()
@@ -1708,9 +1669,9 @@ class FPGAArray(object):
                         else:
                             lanes.add(lane_number)
         if lane_type is None:
-            return list(iceboards.keys())
+            return list(boards.keys())
         else:
-            return iceboards
+            return boards
 
 
 log_levels = {'info': logging.INFO,
@@ -1770,7 +1731,7 @@ def add_logging_arguments(parser):
 
 def add_fpga_array_arguments(parser):
     parser.add_argument('--if_ip',           type=str, help='IP address of adapter through which the connection to the FPGA will be established. This is used solely for direct UDP communications with the FPGA. If not specified, the system will use the same interface that communicates with the ARM processor.')
-    parser.add_argument('--subarrays',       type=int, nargs='*', help='Keep in the hardware map only the boards that are in the specified subarrays. This applies only to iceboards that are specified in a YAML file.')
+    parser.add_argument('--subarrays',       type=int, nargs='*', help='Keep in the hardware map only the boards that are in the specified subarrays. This applies only to boards that are specified in a YAML file.')
     parser.add_argument('--ignore_missing_boards', action='store_true', help='Do not fail if boards are not found')
     parser.add_argument('--ping',            type=int, help="1: Check if Tuber is responding. 0: Check but ignore. ")
     parser.add_argument('--mdns_timeout',    type=float, help="Time to wait for mDNS discovery replies")
@@ -1798,8 +1759,6 @@ def add_fpga_array_arguments(parser):
     parser.add_argument('-s', '--sampling_frequency', type=float, help="Sampling frequency of the ADC in Hz. Default is the platform/mode default (3200e6 on CRS).")
     parser.add_argument('--integration_period', type=int, help="Integration period (in frames) of the firmware correlator (if present). Defaults to 65536. ")
     parser.add_argument('--autocorr_only', type=int, nargs='?',const=1, default=0, help="If set, the firmware correlator will send only the autocorrelation products")
-    parser.add_argument('-u', '--udp_retries', type=int, help="Number of times UDP packet transmission to the FPGA will be retried.")
-    parser.add_argument('--fpga_ip_addr_fn', type=str, help="Method used to set the FPGA IP address relative to the ARM address")
     parser.add_argument('hwm',               type=str, nargs='*', default=argparse.SUPPRESS, help="target hardware")  # allows free-style hardware description string
 
     defaults = dict(
@@ -1809,8 +1768,7 @@ def add_fpga_array_arguments(parser):
         sync_master_source=None,
         sync_master_output=None,
         mode=None,
-        frames_per_packet=2,
-        udp_retries=3)
+        frames_per_packet=2)
     return defaults
 
 
@@ -1851,9 +1809,9 @@ def create_fpga_array(args=None):
     assist testing of the FPGA array.
 
     The hardware map describing all the components of the FPGA array
-    (motherboards, backplanes, mezzanines) can be specified by explicitrly
+    (motherboards, backplanes) can be specified by explicitrly
     instantiating the corresponding objects in the YAML file (e.g.
-    IceBoardPlus!{...}).
+    boardPlus!{...}).
 
     Alternatively, the hardware can  be specified  using the command line
     arguments or their equivalent entries in the configuration file, which
@@ -1875,7 +1833,7 @@ def create_fpga_array(args=None):
 
         logging:     # Contains all the parameters related to logging
         fpga_array:  # Contains all the parameters related to the creation and
-                     # initialization of the FPGA motherboards, crates and mezzanines
+                     # initialization of the FPGA motherboards and crates
         gpu_array:   # Contains all the parameters related to the creation and
                      # initialization of the GPU nodes
 
@@ -1924,7 +1882,7 @@ def create_fpga_array(args=None):
         network discovery. For CRS, None uses the default tcpipe_rtos_rtos.elf in the
         CRS arm_firmware folder.
 
-    - subarrays: Keep only iceboards that are in the specified subarrays
+    - subarrays: Keep only boards that are in the specified subarrays
         (applicable only to objects created explicitely in the
         configuration file)
 

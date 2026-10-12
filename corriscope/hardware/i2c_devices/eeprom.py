@@ -13,7 +13,7 @@ class eeprom(object):
 
     Parameters:
 
-        i2c_handlers: I2CInterface object that is used to access the I2C buses
+        i2c_handlers: I2C interface object (e.g. TCPipe_I2C) that is used to access the I2C buses
 
         address (int): 7-bit address of the EEPROM device
 

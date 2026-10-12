@@ -39,7 +39,7 @@ def _data_config_sections(config):
         return {key: payload[key] for key in DATA_CONFIG_KEYS}
     return payload
 
-# TCP port used to reach CRS/ICE boards for switch MAC learning (echo service).
+# TCP port used to reach CRS boards for switch MAC learning (echo service).
 DEFAULT_PING_PORT = 7
 
 # Persist UDP sockets across receiver restarts within one Python process.
@@ -166,7 +166,7 @@ class RawAcqReceiver(object):
 
 
                     list_of_sources:  (list of tuples): List of address:port
-                        tuples [(addr, port)...] that describe the IceBoards
+                        tuples [(addr, port)...] that describe the boards
                         that will be sending data to this port. A TCP
                         connection will be attempted to those addresses to
 
@@ -479,7 +479,7 @@ class RawAcqReceiver(object):
         """Return ``(source_key, ping_addr)`` for a port source entry.
 
         ``source_key`` is ``(host, port)`` used in ``target_addr`` and must match the
-        FPGA/iceboard identity expected by ``fpga_master`` (often the board UDP source port).
+        FPGA/board identity expected by ``fpga_master`` (often the board UDP source port).
 
         ``ping_addr`` is ``(host, tcp_port)`` for switch MAC learning. CRS boards use TCP
         echo on port 7; do not use the ephemeral UDP source port (e.g. 62510) for ping.
