@@ -717,11 +717,14 @@ class CRS(Motherboard):
         # programming the FPGA and initializing DMAs. Next command will block
         # until this is done (~200 ms).
         await self.tcpipe.oled_set_firmware_label_async('chFPGA')
-        # await self.tcpipe.oled_draw_text_async(
-        #     self.OLED_CONFIG_NAME_X,
-        #     self.OLED_CONFIG_NAME_Y,
-        #     firmware_mode,
-        #     rotation=self.OLED_ROTATED_CLOCKWISE_TEXT_ROTATION)
+        # Show the firmware mode (corr8/corr32/corr64/...) along the right edge of the panel.
+        # oled_draw_text_async only logs a warning if the RTOS refuses the request.
+        if firmware_mode:
+            await self.tcpipe.oled_draw_text_async(
+                self.OLED_CONFIG_NAME_X,
+                self.OLED_CONFIG_NAME_Y,
+                firmware_mode,
+                rotation=self.OLED_ROTATED_CLOCKWISE_TEXT_ROTATION)
         self.logger.info(
             f'{self!r}: Init phase OLED: {time.perf_counter() - t_oled:.3f} s')
         self.logger.info(
