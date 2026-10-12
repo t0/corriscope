@@ -64,3 +64,8 @@
     test = [
         "pytest>=8,<9",
         ]
+
+[tool.pytest.ini_options]
+    testpaths = ["tests"]
+    # tests/crs_corr_tests holds notebooks and scripts that need real CRS hardware; not collected by pytest.
+    norecursedirs = ["crs_corr_tests", ".*", "__pycache__"]
