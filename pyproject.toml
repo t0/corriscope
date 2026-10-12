@@ -33,17 +33,26 @@
         "wtl.metrics @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.metrics.git",
         "wtl.log @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.log.git",
         "wtl.config @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.config.git@1.1.1",
+        "wtl.rest @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.rest.git@1.2.0",  # fpga_master / raw_acq / gps / ps REST servers
+        "wtl.h5-archive @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.h5-archive.git",  # digital_gain archives
 
         # PyPi packages
-        "aiohttp",  # CRS discovery / netconsole firmware loading
+        "aiohttp",  # CRS discovery / netconsole firmware loading / REST
         "numpy",
-        "h5py",  # pocket_correlator data files
+        "h5py",  # pocket_correlator and raw_acq data files
         "matplotlib",
         "PyYAML",
+        "psutil",  # fpga_master system metrics
         "ifaddr",  # CRS beacon discovery
         "xmodem",  # CRS U-Boot netconsole firmware upload
         "zeroconf==0.34.3",  # mDNS discovery
         ]
+
+[project.scripts]
+    fpga_master = "corriscope.fpga_master:main"
+    raw_acq = "corriscope.raw_acq.__main__:main"
+    corriscope_gps = "corriscope.gps:main"
+    corriscope_ps = "corriscope.ps:main"
 # also needed for the jupyter notebooks in tests/: jupyter, ipympl
 
 [project.urls]

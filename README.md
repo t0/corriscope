@@ -29,9 +29,23 @@ What was removed relative to pychfpga (first pass, behaviour of the CRS path kep
   IceBoard `ADCDAQ` / `PROBER` / `CORR44` / FPGA-side SPI and I2C firmware modules.
 - ADC delay calibration, mezzanine power sequencing and the `iceboards` / `icecrates` /
   `exclude_iceboards` / `no_mezz` parameters of `FPGAArray`.
-- `fpga_master`, `gps`, `ps`, `raw_acq`, `calculate_gains`, `digital_gain`, the periscope Qt app,
-  docs, qc and firmware simulations. These are candidates to port later if needed.
+- The periscope Qt app, docs, qc and firmware simulations.
 - The package was renamed `pychfpga` -> `corriscope`; everything else keeps its module path.
+
+Site-operation modules kept from pychfpga (unchanged apart from the rename and the removal
+of the ADC-delay calibration step):
+
+| module | role | entry point |
+|--------|------|-------------|
+| `fpga_master` | REST daemon that builds the `FPGAArray` from a YAML config (`tests/configs/corr8.yaml`), drives `raw_acq` servers, computes/loads/saves digital gains, starts HDF5 captures, exposes metrics | `fpga_master` |
+| `raw_acq` | UDP receiver + packet processors + HDF5 writers for raw ADC/FFT frames and correlator products, behind a REST server/client | `raw_acq` |
+| `calculate_gains` | digital-gain computation engine (direct and iterative) fed by `raw_acq` RMS/FFT data; used by `fpga_master` | library |
+| `digital_gain` | HDF5 archive format for gains (`wtl.h5-archive`); `fpga_master` load/save | library |
+| `gps` | REST server for the Spectrum Instruments TM-4D GPS receiver that provides IRIG-B time (via a serial-to-ethernet adapter) | `corriscope_gps` |
+| `ps` | REST server for Agilent N5700-series crate power supplies (IceCrate era; keep only if such a supply is in use) | `corriscope_ps` |
+
+`scripts/` holds the CRS debugging helpers that go with `raw_acq` (UDP capture checks, live
+FFT rms, TCPipe log watchers).
 
 Two things were *added*: `corriscope/fpga_firmware/__init__.py` imports `chFPGA` so the
 firmware class is registered before `FPGAFirmware.get_firmware()` is called (in pychfpga
@@ -53,9 +67,11 @@ pip install jupyterlab ipympl      # for the notebooks
 
 ### Bitstreams
 
-The `.bit` files are not in git (33 MB each). Copy the CRS bitstreams into
-`corriscope/fpga_firmware/bitstreams/` (the default search folder) or pass
-`FPGAArray(..., bitfile='/path/to/folder')`.
+The four CRS bitstreams (`corr8`, `corr32`, `corr64`, `ct`; 33 MB each) are in
+`corriscope/fpga_firmware/bitstreams/`, stored with **git-lfs**. Install git-lfs before
+cloning (`git lfs install`), or run `git lfs pull` afterwards if the files are small pointer
+files. That folder is the default search path; `FPGAArray(..., bitfile='/path/to/folder')`
+overrides it.
 
 ### Network
 
@@ -106,9 +122,13 @@ python -m corriscope.fpga_array crs 0037 --mode corr8 --prog 2 --stderr_log_leve
 
 ## Tests
 
-- `tests/crs_corr_tests/crs_corr64_tests.ipynb` is the reference end-to-end test (works for the
-  other modes by editing the first cell as shown above). `crs_corr32_tests*.ipynb` and
-  `crs_corr_example.ipynb` (corr8) are the earlier variants. Outputs were stripped.
+- `tests/crs_corr_tests/crs_corr_walkthrough.ipynb`: start here. Pick `MODE` in the first
+  cell (`corr8`/`corr32`/`corr64`), then: program, raw ADC captures and plots, raw FFT frames,
+  digital gains, correlator and visibilities, and an overplot of ADC-derived spectrum,
+  firmware FFT, quantized prediction and correlator autocorrelation.
+- `tests/crs_corr_tests/crs_corr64_tests.ipynb` is the reference end-to-end test the
+  walkthrough was built from. `crs_corr32_tests*.ipynb` and `crs_corr_example.ipynb` (corr8)
+  are the earlier variants. Outputs were stripped.
 - `tests/crs_corr_tests/pocket_correlator/` exercises `corriscope.pocket_correlator`.
 - Hardware-free unit tests: `python -m pytest tests/` (one stale assertion in
   `test_crs_discovery.py::test_legacy_fwreq_format_is_rejected` also fails in pychfpga).

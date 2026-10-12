@@ -35,6 +35,4 @@ fw_test_results/
 firmware_tests/fft_of_data
 # corriscope-specific
 corriscope/_version_scm.py
-# FPGA bitstreams are large binaries: keep them out of git (see README for where they go)
-*.bit
 __pycache__/
