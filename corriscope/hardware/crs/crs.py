@@ -98,9 +98,6 @@ class CRS(Motherboard):
     REFCLK_BP = 1
     REFCLK_MB_SMA = 2
 
-    OLED_CONFIG_NAME_X = 118
-    OLED_CONFIG_NAME_Y = 30
-    OLED_ROTATED_CLOCKWISE_TEXT_ROTATION = 3
 
     def __init__(self, hostname=None, serial=None, slot=None, subarray=None, **kwargs):
         super().__init__(
@@ -716,15 +713,15 @@ class CRS(Motherboard):
         # Note: although we finished uploading the firmware, TCPIPE is still busy
         # programming the FPGA and initializing DMAs. Next command will block
         # until this is done (~200 ms).
-        await self.tcpipe.oled_set_firmware_label_async('chFPGA')
-        # Show the firmware mode (corr8/corr32/corr64/...) along the right edge of the panel.
-        # oled_draw_text_async only logs a warning if the RTOS refuses the request.
-        if firmware_mode:
-            await self.tcpipe.oled_draw_text_async(
-                self.OLED_CONFIG_NAME_X,
-                self.OLED_CONFIG_NAME_Y,
-                firmware_mode,
-                rotation=self.OLED_ROTATED_CLOCKWISE_TEXT_ROTATION)
+        # The RTOS redraws its status frame (serial, IP, FW label, core temperature) at ~1 Hz, so
+        # anything drawn with oled_draw_text is wiped within a second. The firmware label is the
+        # one persistent field the host owns, so the mode (corr8/corr32/corr64, ...) goes in there.
+        label = f'chFPGA {firmware_mode}' if firmware_mode else 'chFPGA'
+        try:
+            await self.tcpipe.oled_set_firmware_label_async(label)
+        except IOError as e:  # e.g. 'Argument too long' on an older RTOS
+            self.logger.warning(f'{self!r}: OLED rejected firmware label {label!r} ({e}); using "chFPGA"')
+            await self.tcpipe.oled_set_firmware_label_async('chFPGA')
         self.logger.info(
             f'{self!r}: Init phase OLED: {time.perf_counter() - t_oled:.3f} s')
         self.logger.info(
