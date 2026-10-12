@@ -1,0 +1,66 @@
+[build-system]
+    requires = [
+        "setuptools>=64,<82", # >=64 required for setuptools-scm
+        "setuptools-scm>=8.0", # automatically manages version number from git
+        "wheel"
+        ]
+    build-backend = "setuptools.build_meta"
+
+[project]
+    name = "corriscope"
+    description = "Controls t0.technology CRS boards running the chFPGA FX-correlator firmware (corr8 / corr32 / corr64)"
+    classifiers= [
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+        "Topic :: Scientific/Engineering :: Astronomy",
+        "Intended Audience :: Science/Research",
+        ]
+    dynamic=["version"]
+    authors = [
+        { name = "McGill University"},
+        { name = "JF Cliche", email = "vhdl@jfcliche.com" },
+        { name = "t0.technology"},
+        ]
+    requires-python = "==3.12.*"
+    readme = "README.md"
+
+    dependencies = [
+        "setuptools>=64,<82", # required by setuptools-scm
+        "setuptools-scm>=8.0",
+
+        # Private packages (same ones pychfpga uses)
+        "wtl.namespace @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.namespace.git",
+        "wtl.metrics @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.metrics.git",
+        "wtl.log @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.log.git",
+        "wtl.config @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.config.git@1.1.1",
+
+        # PyPi packages
+        "aiohttp",  # CRS discovery / netconsole firmware loading
+        "numpy",
+        "h5py",  # pocket_correlator data files
+        "matplotlib",
+        "PyYAML",
+        "ifaddr",  # CRS beacon discovery
+        "xmodem",  # CRS U-Boot netconsole firmware upload
+        "zeroconf==0.34.3",  # mDNS discovery
+        ]
+# also needed for the jupyter notebooks in tests/: jupyter, ipympl
+
+[project.urls]
+    Repository = "https://github.com/t0/corriscope"
+
+[tool.setuptools.package-data]
+    corriscope = ["*.bit", "*.yaml", "*.elf", "*.bin", "*.txt"]
+
+[tool.setuptools.packages.find]
+    where = ["."]
+    exclude = ["tests", "tests.*"]
+    namespaces = false
+
+[tool.setuptools_scm]
+    version_file = "corriscope/_version_scm.py"
+
+[project.optional-dependencies]
+    test = [
+        "pytest>=8,<9",
+        ]
