@@ -33,7 +33,7 @@
         "wtl.metrics @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.metrics.git",
         "wtl.log @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.log.git",
         "wtl.config @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.config.git@1.1.1",
-        "wtl.rest @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.rest.git@1.2.0",  # fpga_master / raw_acq / gps / ps REST servers
+        "wtl.rest @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.rest.git@1.2.0",  # fpga_master / raw_acq / gps REST servers
         "wtl.h5-archive @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.h5-archive.git",  # digital_gain archives
 
         # PyPi packages
@@ -48,12 +48,12 @@
         "zeroconf==0.34.3",  # mDNS discovery
         ]
 
+# also needed for the jupyter notebooks in tests/: jupyter, ipympl
+
 [project.scripts]
     fpga_master = "corriscope.fpga_master:main"
     raw_acq = "corriscope.raw_acq.__main__:main"
     corriscope_gps = "corriscope.gps:main"
-    corriscope_ps = "corriscope.ps:main"
-# also needed for the jupyter notebooks in tests/: jupyter, ipympl
 
 [project.urls]
     Repository = "https://github.com/t0/corriscope"

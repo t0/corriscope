@@ -42,7 +42,8 @@ of the ADC-delay calibration step):
 | `calculate_gains` | digital-gain computation engine (direct and iterative) fed by `raw_acq` RMS/FFT data; used by `fpga_master` | library |
 | `digital_gain` | HDF5 archive format for gains (`wtl.h5-archive`); `fpga_master` load/save | library |
 | `gps` | REST server for the Spectrum Instruments TM-4D GPS receiver that provides IRIG-B time (via a serial-to-ethernet adapter) | `corriscope_gps` |
-| `ps` | REST server for Agilent N5700-series crate power supplies (IceCrate era; keep only if such a supply is in use) | `corriscope_ps` |
+
+(`ps`, the Agilent N5700 power-supply server from pychfpga, was dropped: no such supply on CRS systems.)
 
 `scripts/` holds the CRS debugging helpers that go with `raw_acq` (UDP capture checks, live
 FFT rms, TCPipe log watchers).
@@ -50,7 +51,7 @@ FFT rms, TCPipe log watchers).
 Known issue: `wtl.archive` 1.1.0 (the `wtl.h5-archive` package) uses `collections.MutableSet`,
 which no longer exists on Python 3.12, so `digital_gain` and `fpga_master` fail to import
 until that private package is fixed (`collections.abc.MutableSet`). `raw_acq`,
-`calculate_gains`, `gps` and `ps` import fine.
+`calculate_gains` and `gps` import fine.
 
 Two things were *added*: `corriscope/fpga_firmware/__init__.py` imports `chFPGA` so the
 firmware class is registered before `FPGAFirmware.get_firmware()` is called (in pychfpga
