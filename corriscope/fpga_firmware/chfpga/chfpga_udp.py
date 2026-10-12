@@ -4,7 +4,7 @@
 import asyncio
 import socket
 
-from wtl.metrics import Metrics
+from corriscope.common.metrics import Metrics
 
 from corriscope.hardware.interfaces import FPGAMmi
 

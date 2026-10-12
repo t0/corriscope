@@ -1,7 +1,7 @@
 """Raw acquisition REST client."""
 
-from wtl import log
-from wtl.rest import AsyncRESTClient
+from corriscope.common import log
+from corriscope.common.rest import AsyncRESTClient
 
 from .server import RawAcqAsyncRESTServer
 

@@ -48,10 +48,10 @@ except ImportError:
     if pychfpga_path not in sys.path:
         sys.path.insert(0, pychfpga_path)
 
-from wtl import log
-from wtl.metrics import Metrics
-from wtl.namespace import NameSpace, merge_dict
-from wtl.config import load_yaml_config
+from corriscope.common import log
+from corriscope.common.metrics import Metrics
+from corriscope.common.namespace import NameSpace, merge_dict
+from corriscope.common.config import load_yaml_config
 
 from corriscope.common import Ccoll
 from corriscope.common.perf import Perf

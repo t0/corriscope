@@ -27,12 +27,12 @@ import numpy as np
 
 
 # External private packages
-from wtl import log
-from wtl.rest import AsyncRESTServer, AsyncRESTClient, ClientError # generic REST servers and clients
-from wtl.rest import endpoint, run_client
-from wtl.namespace import NameSpace, merge_dict
-from wtl.config import load_yaml_config
-from wtl.metrics import Metrics
+from corriscope.common import log
+from corriscope.common.rest import AsyncRESTServer, AsyncRESTClient, ClientError # generic REST servers and clients
+from corriscope.common.rest import endpoint, run_client
+from corriscope.common.namespace import NameSpace, merge_dict
+from corriscope.common.config import load_yaml_config
+from corriscope.common.metrics import Metrics
 try:
     import comet
 except ImportError:
@@ -1653,7 +1653,7 @@ class FPGAMaster(object):
             gain_timestamps=gain_timestamps)
 
         # Instantiate gains_filename and gains_uid for REST server endpoint
-        self.gains_filename = self.gain_hdf5.reader.last_value.filename
+        self.gains_filename = self.gain_hdf5.last_read_file
         self.gains_uid = uid
 
         # Return the unique identifier of the gains that were loaded

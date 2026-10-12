@@ -5,9 +5,9 @@ import datetime
 import time
 import aiohttp.web
 
-from wtl import log
-from wtl.metrics import Metrics
-from wtl.rest import AsyncRESTServer, endpoint
+from corriscope.common import log
+from corriscope.common.metrics import Metrics
+from corriscope.common.rest import AsyncRESTServer, endpoint
 
 try:
     import comet

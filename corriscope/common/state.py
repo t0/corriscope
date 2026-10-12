@@ -4,7 +4,7 @@ import copy
 from collections.abc import Mapping, Sequence
 
 import numpy as np
-from wtl.namespace import NameSpace
+from .namespace import NameSpace
 
 
 _MISSING = object()

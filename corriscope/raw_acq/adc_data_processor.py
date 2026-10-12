@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 
-from wtl import log
+from corriscope.common import log
 
 from corriscope.common.state import State
 

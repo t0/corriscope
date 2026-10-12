@@ -40,7 +40,7 @@ of the ADC-delay calibration step):
 | `fpga_master` | REST daemon that builds the `FPGAArray` from a YAML config (`tests/configs/corr8.yaml`), drives `raw_acq` servers, computes/loads/saves digital gains, starts HDF5 captures, exposes metrics | `fpga_master` |
 | `raw_acq` | UDP receiver + packet processors + HDF5 writers for raw ADC/FFT frames and correlator products, behind a REST server/client | `raw_acq` |
 | `calculate_gains` | digital-gain computation engine (direct and iterative) fed by `raw_acq` RMS/FFT data; used by `fpga_master` | library |
-| `digital_gain` | HDF5 archive format for gains (`wtl.h5-archive`); `fpga_master` load/save | library |
+| `digital_gain` | HDF5 archive of the programmed scaler gains (per input, per bin); `fpga_master` load/save | library |
 | `gps` | REST server for the Spectrum Instruments TM-4D GPS receiver that provides IRIG-B time (via a serial-to-ethernet adapter) | `corriscope_gps` |
 
 (`ps`, the Agilent N5700 power-supply server from pychfpga, was dropped: no such supply on CRS systems.)
@@ -48,10 +48,21 @@ of the ADC-delay calibration step):
 `scripts/` holds the CRS debugging helpers that go with `raw_acq` (UDP capture checks, live
 FFT rms, TCPipe log watchers).
 
-Known issue: `wtl.archive` 1.1.0 (the `wtl.h5-archive` package) uses `collections.MutableSet`,
-which no longer exists on Python 3.12, so `digital_gain` and `fpga_master` fail to import
-until that private package is fixed (`collections.abc.MutableSet`). `raw_acq`,
-`calculate_gains` and `gps` import fine.
+### No private dependencies
+
+pychfpga depended on six private `wtl.*` packages from the Winterland Bitbucket. corriscope
+re-implements the parts it used, so `pip install .` needs only PyPI packages:
+
+| replaced | by | what it provides |
+|----------|----|------------------|
+| `wtl.namespace` | `corriscope/common/namespace.py` | `NameSpace` attribute-access mapping, `merge_dict` |
+| `wtl.config` | `corriscope/common/config.py` | `load_yaml_config("file.yaml:section .other key=value")` |
+| `wtl.log` | `corriscope/common/log.py` | `get_logger`, `setup_logging` / `stop_logging`, `setup_basic_logging` |
+| `wtl.metrics` | `corriscope/common/metrics.py` | `Metrics` container with Prometheus text/gzip output |
+| `wtl.rest` | `corriscope/common/rest.py` | `AsyncRESTServer`, `@endpoint`, `AsyncRESTClient`, `run_client`, `SocketContext` |
+| `wtl.h5-archive` | `corriscope/digital_gain.py` | the gain archive is now self-contained (same HDF5 layout) |
+
+`tests/test_common_utils.py` covers them.
 
 Two things were *added*: `corriscope/fpga_firmware/__init__.py` imports `chFPGA` so the
 firmware class is registered before `FPGAFirmware.get_firmware()` is called (in pychfpga
@@ -60,8 +71,7 @@ now raise if given a non-`None` value instead of silently touching hardware that
 
 ## Installation
 
-Python 3.12 is required. The private `wtl.*` packages come from the Winterland bitbucket
-(ssh access needed), exactly as for pychfpga.
+Python 3.12 is required. All dependencies are on PyPI (see "No private dependencies" below).
 
 ```bash
 git clone git@github.com:t0/corriscope.git

@@ -30,7 +30,7 @@ import yaml
 
 # Private external packages
 
-from wtl.metrics import Metrics
+from corriscope.common.metrics import Metrics
 
 # Local packages
 

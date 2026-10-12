@@ -15,13 +15,13 @@ import aiohttp
 import traceback
 
 # External private packages
-from wtl import log
-from wtl.rest import AsyncRESTServer, AsyncRESTClient  # generic REST servers and clients
-from wtl.rest import endpoint
-from wtl.rest import run_client, SocketContext
-from wtl.namespace import NameSpace
-from wtl.config import load_yaml_config
-from wtl.metrics import Metrics
+from corriscope.common import log
+from corriscope.common.rest import AsyncRESTServer, AsyncRESTClient  # generic REST servers and clients
+from corriscope.common.rest import endpoint
+from corriscope.common.rest import run_client, SocketContext
+from corriscope.common.namespace import NameSpace
+from corriscope.common.config import load_yaml_config
+from corriscope.common.metrics import Metrics
 try:
     import comet
 except ImportError:

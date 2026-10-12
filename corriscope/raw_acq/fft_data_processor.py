@@ -12,7 +12,7 @@ from corriscope.common.state import State
 
 SOURCE_INDEX = 1
 
-from wtl import log
+from corriscope.common import log
 
 PACKET_COOKIE_FFT = 0xA1
 

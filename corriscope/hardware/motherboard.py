@@ -5,7 +5,7 @@ import asyncio
 
 # private packages
 
-from wtl.metrics import Metrics
+from corriscope.common.metrics import Metrics
 
 # local Packages
 from .hardware_map import HardwareMap

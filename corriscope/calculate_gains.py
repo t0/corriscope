@@ -17,7 +17,7 @@ import numpy as np
 # Private external packages
 
 # from wtl.rest import RunSyncWrapper  # For testing
-from wtl import log
+from corriscope.common import log
 
 # local imports
 from . import raw_acq # this assumed that '..' has been put into the search path

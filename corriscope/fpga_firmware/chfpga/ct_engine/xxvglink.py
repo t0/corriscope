@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import asyncio
 
 from ..mmi import MMI, MMIRouter, BitField, CONTROL, STATUS, DRP
-from wtl.metrics import Metrics
+from corriscope.common.metrics import Metrics
 
 class QPLL(MMI):
     """ Implements interface to one of the COMMON """

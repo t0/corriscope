@@ -28,15 +28,7 @@
         "setuptools>=64,<82", # required by setuptools-scm
         "setuptools-scm>=8.0",
 
-        # Private packages (same ones pychfpga uses)
-        "wtl.namespace @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.namespace.git",
-        "wtl.metrics @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.metrics.git",
-        "wtl.log @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.log.git",
-        "wtl.config @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.config.git@1.1.1",
-        "wtl.rest @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.rest.git@1.2.0",  # fpga_master / raw_acq / gps REST servers
-        "wtl.h5-archive @ git+ssh://git@bitbucket.org/winterlandcosmology/wtl.h5-archive.git",  # digital_gain archives
-
-        # PyPi packages
+        # PyPI packages only: the former private wtl.* helpers are re-implemented in corriscope/common
         "aiohttp",  # CRS discovery / netconsole firmware loading / REST
         "numpy",
         "h5py",  # pocket_correlator and raw_acq data files

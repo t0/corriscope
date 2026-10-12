@@ -9,7 +9,7 @@ import logging
 import asyncio
 import socket
 
-from wtl.metrics import Metrics
+from corriscope.common.metrics import Metrics
 from ..mmi import MMI, BitField, CONTROL, STATUS
 import numpy as np
 

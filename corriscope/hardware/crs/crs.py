@@ -11,7 +11,7 @@ from os import path
 
 # External private packages
 
-from wtl.metrics import Metrics
+from corriscope.common.metrics import Metrics
 
 # Local packages
 

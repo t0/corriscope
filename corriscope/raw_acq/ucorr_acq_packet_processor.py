@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Union
 
 import numpy as np
 
-from wtl import log
+from corriscope.common import log
 
 from corriscope.common.state import State
 from corriscope.common.ucorr_packet_processor import UCorrPacketProcessor

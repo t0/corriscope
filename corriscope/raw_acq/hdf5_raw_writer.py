@@ -6,7 +6,7 @@ import time
 import h5py
 import numpy as np
 
-from wtl import log
+from corriscope.common import log
 
 
 class HDF5RawWriter(object):

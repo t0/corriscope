@@ -13,8 +13,8 @@ import netifaces
 import numpy as np
 import psutil
 
-from wtl import log
-from wtl.metrics import Metrics
+from corriscope.common import log
+from corriscope.common.metrics import Metrics
 
 from corriscope.common.state import State
 

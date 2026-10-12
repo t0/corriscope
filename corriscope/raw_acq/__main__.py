@@ -2,8 +2,8 @@
 
 import sys
 
-from wtl import log
-from wtl.rest import run_client
+from corriscope.common import log
+from corriscope.common.rest import run_client
 
 from .client import RawAcqAsyncRESTClient
 from .server import RawAcqAsyncRESTServer
