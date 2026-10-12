@@ -77,10 +77,8 @@ class NameSpace:
     def __bool__(self):
         return bool(self._obj)
 
-    def __eq__(self, other):
-        return self._obj == (other._obj if isinstance(other, NameSpace) else other)
-
-    __hash__ = None
+    # No __eq__: two NameSpaces compare by identity (State's change tracking depends on it);
+    # compare contents with ``ns.as_dict() == other.as_dict()``.
 
     def __str__(self):
         return str(self._obj)
