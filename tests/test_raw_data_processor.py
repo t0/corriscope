@@ -798,3 +798,25 @@ def test_serialized_format_change_is_detected_without_raw_realloc():
     assert processor.config.capture_format[0] is fmt0
     assert fmt0.fmt_data_width == 4
     assert not processor.config.has_changed(_STATIC_BUFFER_ATTRS, context=_STATIC_BUFFER_ATTRS)
+
+
+def test_read_raw_frames_default_source_follows_config_change():
+    """Regression: the default source was taken from the cached config *before* update_config(),
+    so the first read after the capture switched from source 0 (ADC, 8-bit here) to source 1
+    (scaler, 16-bit slots here) decoded the new data with the old format."""
+    pr = DummyPacketReceiver()
+    state = config_getter_from_mapping(default_config(format="8"))()
+    pending = []  # like FPGAArray.get_raw_data_config, the getter refreshes the State when called
+
+    def getter():
+        if pending:
+            state.capture_format[1].update_from(capture_format_for_tests(pending.pop()).as_dict())
+            state.update(source=1)
+        return state
+
+    r = RawFrameReceiver(pr, config_getter=getter, verbose=0)
+    write_burst(r, pr, 0, ts=9001, payload_base=20)
+    write_burst(r, pr, 2, ts=9002, payload_base=30)
+    pending.append("14")  # the capture is now on source 1 with 16-bit slots (as set by start_data_capture)
+    _, data, _ = r.read_raw_frames(ncap=1, flush=False, chan_first=False)
+    assert data.dtype.itemsize == 2, "decoded with the stale source-0 format"

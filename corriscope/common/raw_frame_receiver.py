@@ -67,11 +67,14 @@ class RawFrameReceiver(RawDataPacketProcessor):
             if verbose >= 2:
                 print(f"RawFrameReceiver: verbose={verbose}")
 
+        # Refresh the config first: the default source and the capture format must reflect the
+        # capture that is running now, not the one that was running when the receiver was created
+        # (e.g. an ADC capture followed by an fft_2x capture on the same receiver).
+        self.update_config()
         if source is None:
             source = int(self.config.get("source", 0))
         else:
             source = int(source)
-        self.update_config()  # Make sure we pick up format changes since receiver creation so we allocate the correct output buffers below
         ts, data, counts = self.create_output_buffer(n_ts=ncap, source=source, split=split, format=format, complex_override=complex_override)
         # ts.fill(0)
         # data.fill(0)
