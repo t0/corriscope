@@ -356,7 +356,6 @@ def main(argv=None):
     and UDP-buffer status, then the ``sudo`` commands that fix what is wrong. Exit code 1 if anything
     is wrong."""
     import argparse
-    import sys
     parser = argparse.ArgumentParser(description='Check the capture interface for CRS UDP data.')
     parser.add_argument('--status', action='store_true', help='print the status (default action)')
     parser.add_argument('--interface', help='check only this interface (default: all)')
