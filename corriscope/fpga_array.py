@@ -219,7 +219,7 @@ class FPGAArray(object):
 
                   where
 
-                  ``board_descriptors := {CRS serial[:slot[:crate_number]] [serial[:slot[:crate_number]]] ... | hostname | ip_address}``
+                  ``board_descriptors := {CRS {serial|*}[:slot[:crate_number]] [{serial|*}[:slot[:crate_number]]] ... | hostname| ip_address}``
 
                   ``crate_descriptors := {CRC4 serial[:crate_number] [serial[:crate_number]] ...}``,
 
@@ -711,6 +711,30 @@ class FPGAArray(object):
                     crates=cr_to_discover,
                     timeout=mdns_timeout,
                     inter_reply_timeout=0.5)
+
+            # '*:slot' wildcards: keep only the discovered boards in the requested slots (the beacon
+            # carries the crate slot). Boards requested by serial number are always kept.
+            wildcard_slots = getattr(self, '_wildcard_slots', set())
+            if wildcard_slots:
+                from corriscope.hardware.crs.crs_discovery import serials_equal
+                for mb in list(motherboards):
+                    if any(serials_equal(mb.serial, s) for s in explicit_board_serials):
+                        continue
+                    if mb.slot not in wildcard_slots:
+                        self.logger.info(f'{self!r}: Removing {mb} (slot {mb.slot}): '
+                                         f'not in requested slots {sorted(wildcard_slots)}')
+                        mb.delete_instance()
+                found_slots = {mb.slot for mb in motherboards}
+                missing = sorted(wildcard_slots - found_slots)
+                if missing:
+                    message = f'{self!r}: No board found in requested slot(s) {missing}'
+                    if not ignore_missing_boards:
+                        raise RuntimeError(message)
+                    self.logger.warning(message)
+                crates_seen = {mb.crate.serial for mb in motherboards if mb.crate and mb.crate.serial}
+                if len(crates_seen) > 1:
+                    raise RuntimeError(f'{self!r}: Slot wildcards matched boards in {len(crates_seen)} crates '
+                                       f'{sorted(crates_seen)}; name the boards by serial number instead')
             # if explicit_board_serials:
             #     from corriscope.hardware.crs.crs_discovery import serials_equal
             #     for mb in list(motherboards):
@@ -864,19 +888,14 @@ class FPGAArray(object):
         #         % (self, ', '.join('%s SN%s' % (model, serial)
         #                            for (model, serial) in missing_crates)))
 
-        # Check for missing boards in explicitely-specified crates
-        missing_slots = {
-            (cr.part_number, cr.serial, cr.crate_number): set(range(1, cr.NUMBER_OF_SLOTS + 1)) - set(cr.slot)
-            for cr in crates}
-        if any(missing_slots.values()):
-            missing_slots_str = '\n'.join(
-                f"    Crate #{number} ({model} SN{serial}): slots {', '.join((str(s) for s in slots))}"
-                for ((model, serial, number), slots) in missing_slots.items() if slots)
-            message = f'{self!r}: The following slots are missing:\n{missing_slots_str}'
-            if not ignore_missing_boards:
-                raise RuntimeError(message)
-            else:
-                self.logger.warning(message)
+        # Report the empty slots of the crates we know about. This is information only: a CRS crate
+        # has 16 slots, and a corr8 (1 board) or corr64 (8 boards) never fills it. Boards that were
+        # requested but not found are caught above (ping / unresolved motherboards).
+        for cr in crates:
+            empty = sorted(set(range(1, cr.NUMBER_OF_SLOTS + 1)) - set(cr.slot))
+            if empty:
+                self.logger.info(f'{self!r}: Crate {cr.part_number} SN{cr.serial}: '
+                                 f'{len(cr.slot)} board(s) in slot(s) {sorted(cr.slot)}, empty slots {empty}')
 
         #################################
         # Check the hardware map for generic objects
@@ -1366,6 +1385,9 @@ class FPGAArray(object):
         if isinstance(hw_string, (list, tuple)):
             hw_string = ' '.join(str(s) for s in hw_string)
 
+        # Crate slots requested with the '*:slot' wildcard; init_async keeps only those boards.
+        self._wildcard_slots = set()
+
         # if the hw_string is just '*', we want to find all boards.
         # We therefore create a generic Motherboard with serial '*'.
         # This will be a signal that says we want to match any board.
@@ -1429,8 +1451,14 @@ class FPGAArray(object):
                     raise TypeError(f'Trying to create object {current_class} that '
                                     f'is other than Motherboard or Crate')
             elif el[0] == '*':
+                # '*' = every board of this part number; '*:slot' = the board in that crate slot.
                 if not current_class:
                     raise RuntimeError('A part number must be specified before a wildcard serial number')
+                _serial, slot, _crate_number = split_fields(el, 3)
+                if slot is not None:
+                    if not isinstance(slot, int) or slot < 1:
+                        raise ValueError(f'Invalid slot number in hardware map entry {el!r}')
+                    self._wildcard_slots.add(slot)
                 obj = current_class.get_unique_instance(serial='*')
 
             else:  # otherwise, assume it is a part number

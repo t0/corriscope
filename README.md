@@ -101,16 +101,17 @@ uv run python -m corriscope.network_utils --status
 ## Quick start
 
 `FPGAArray` is the API that the notebooks use. To change the firmware mode, change `mode=`
-and the hardware map string. Edit the serial numbers for your boards.
+and the hardware map string. `crs *:N` is the board in crate slot N. `crs <serial>:N` names
+the board; use it when more than one crate is on the network.
 
 ```python
 from corriscope.fpga_array import FPGAArray
 
-# corr8: one board, given as serial:slot
-ca = await FPGAArray('crs 127:1', mode='corr8', sync_method='local', stderr_log_level='info')
+# corr8: the board in slot 1
+ca = await FPGAArray('crs *:1', mode='corr8', sync_method='local', stderr_log_level='info')
 
-# corr64: eight boards on two backplanes; the board in slot 1 drives the sync
-hwm = 'crs 127:1 134:2 129:3 121:4 124:5 133:6 131:7 120:8'
+# corr64: eight boards in slots 1-8 on two backplanes; the board in slot 1 drives the sync
+hwm = 'crs *:1 *:2 *:3 *:4 *:5 *:6 *:7 *:8'
 ca = await FPGAArray(hwm, mode='corr64',
                      sync_method='trig', sync_source='bp_trig',
                      sync_master=1, sync_master_source='sync_out', sync_master_output=1,

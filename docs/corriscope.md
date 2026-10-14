@@ -103,18 +103,24 @@ The hardware map is a string. It lists the boards of the array.
 - `crs <id> [<id> ...]` adds CRS boards. An `<id>` is a serial number (`127`), a serial
   number and a slot (`127:1`), a serial number, slot and crate (`127:1:1`), a hostname, or
   an IP address.
-- `crc4 <serial>` adds every board that is found on the backplane with that serial number.
+- `crs *:<slot>` adds the board that is in that crate slot, whatever its serial number.
+  The array listens for the beacons of all boards, keeps the boards in the requested slots,
+  and removes the others before it loads any firmware. If boards from more than one crate
+  answer, the slot is ambiguous and the array stops with an error. Then use serial numbers.
+- `crs *` adds every CRS board that answers.
+- `crc4 <serial>` adds every board that is found on the crate with that serial number.
 
 The slot number sets the order of the boards in `ca.ib`. In `corr32` and `corr64`, the
-slot numbers must match the physical slots, because the corner turn depends on them.
+slot numbers must match the physical slots, because the corner turn depends on them. A
+CRS crate has 16 slots. Empty slots are normal and are only logged.
 
 Examples:
 
 ```text
-crs 127:1
-crs 127:1 134:2 129:3 121:4
+crs *:1
+crs *:1 *:2 *:3 *:4
 crs 127:1 134:2 129:3 121:4 124:5 133:6 131:7 120:8
-crc4 1
+crc4 8
 ```
 
 ## 6. Synchronization
