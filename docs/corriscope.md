@@ -43,11 +43,17 @@ The driver for TCPipe is `corriscope/hardware/interfaces/tcpipe.py`.
 
 ### 2.3 Firmware modes
 
-| mode     | boards | inputs | corner turn | bitstream               |
-|----------|--------|--------|-------------|-------------------------|
-| `corr8`  | 1      | 8      | level 1 (in the board)              | `chfpga_crs_corr8.bit`  |
-| `corr32` | 4      | 32     | level 2 (across the backplane)      | `chfpga_crs_corr32.bit` |
-| `corr64` | 8      | 64     | level 3 (across two backplanes)     | `chfpga_crs_corr64.bit` |
+| mode     | boards | inputs | crate slots | corner turn | bitstream               |
+|----------|--------|--------|-------------|-------------|-------------------------|
+| `corr8`  | 1      | 8      | any         | level 1 (in the board)              | `chfpga_crs_corr8.bit`  |
+| `corr32` | 4      | 32     | 1 to 4      | level 2 (across the backplane)      | `chfpga_crs_corr32.bit` |
+| `corr64` | 8      | 64     | 1 to 8      | level 3 (across two backplanes)     | `chfpga_crs_corr64.bit` |
+
+The firmware finds its place in the array from the crate slot: the position on the backplane
+is `(slot - 1) mod 4`, the backplane group is `(slot - 1) div 4` (one bit, so two groups), and
+the correlator ID is `slot - 1`. The boards of a `corr32` must be in slots 1 to 4, and the
+boards of a `corr64` in slots 1 to 8. The array checks this before it initializes the
+firmware.
 
 The modes are rows of the table `chFPGA.PLATFORM_SUPPORT` in
 `corriscope/fpga_firmware/chfpga/chfpga.py`. The bitstreams are in

@@ -41,6 +41,24 @@ def test_slot_zero_is_rejected():
         _parse('crs *:0')
 
 
+def test_slot_layout_check():
+    from types import SimpleNamespace
+    from corriscope.fpga_firmware.chfpga.chfpga_array_methods import chFPGAArrayMethods
+
+    def array(*slots):
+        return SimpleNamespace(ib=[SimpleNamespace(slot=s) for s in slots], fpga_array='FPGAArray()',
+                               REQUIRED_SLOTS=chFPGAArrayMethods.REQUIRED_SLOTS)
+
+    check = chFPGAArrayMethods.check_slot_layout
+    check(array(1, 2, 3, 4, 5, 6, 7, 8), 'corr64')
+    check(array(4, 3, 2, 1), 'corr32')
+    check(array(13), 'corr8')
+    with pytest.raises(RuntimeError, match=r'corr64 needs 8 boards in crate slots \[1, 2, 3, 4, 5, 6, 7, 8\]'):
+        check(array(6, 7, 8, 9, 10, 11, 12, 13), 'corr64')
+    with pytest.raises(RuntimeError):
+        check(array(5, 6, 7, 8), 'corr32')
+
+
 def test_deleting_a_board_frees_its_crate_slot():
     """init_async drops boards outside the requested slots; the crate must forget them too."""
     from corriscope.hardware.crs.crs import CRS

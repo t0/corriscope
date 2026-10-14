@@ -238,6 +238,7 @@ class chFPGAArrayMethods(ArrayMethods):
             init = 3 if mode else 0
 
         if init >= 3:
+            self.check_slot_layout(mode)
             self.logger.info(f'{self.fpga_array!r}: Initializing FPGA firmware')
             self.perf.start('FPGA firmware init', description='Init level 3a: Initialize channelizers and CT/X engines')
             await self.ib.init_fpga_async(
@@ -429,6 +430,24 @@ class chFPGAArrayMethods(ArrayMethods):
             self.perf.start('sync', description='IRIG-B wait plus trigger RPCs')
             await self.sync_async()
         self.perf.stop()
+
+    # Crate slots the corner-turn firmware supports. The firmware derives its place in the array
+    # from the crate slot: CT2 uses (slot-1) % 4 (position on the backplane), CT3 uses
+    # (slot-1) // 4 as a 1-bit slot group (two backplanes), UCORR uses slot-1 as CORR_ID.
+    REQUIRED_SLOTS = {'corr32': tuple(range(1, 5)), 'corr64': tuple(range(1, 9))}
+
+    def check_slot_layout(self, mode):
+        """Raise RuntimeError if the boards are not in the crate slots that ``mode`` needs."""
+        required = self.REQUIRED_SLOTS.get(mode)
+        if not required:
+            return
+        slots = sorted(int(b.slot) for b in self.ib if b.slot)
+        if slots != list(required):
+            raise RuntimeError(
+                f'{self.fpga_array!r}: {mode} needs {len(required)} boards in crate slots '
+                f'{list(required)} (hardware map "crs {" ".join(f"*:{s}" for s in required)}"), '
+                f'but the boards are in slots {slots or "unknown"}. The firmware addresses the '
+                f'corner turn and the correlator by crate slot, so other slots are not supported.')
 
     IRIGB_SYNC_METHODS = ('irig-b', 'irigb', 'distributed_time')
     TRIG_SYNC_METHODS = ('trig',  'centralized_soft_trigger')
