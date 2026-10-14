@@ -715,8 +715,10 @@ class CRS(Motherboard):
         # until this is done (~200 ms).
         # The RTOS redraws its status frame (serial, IP, FW label, core temperature) at ~1 Hz, so
         # anything drawn with oled_draw_text is wiped within a second. The firmware label is the
-        # one persistent field the host owns, so the mode (corr8/corr32/corr64, ...) goes in there.
-        await self.tcpipe.oled_set_firmware_label_async(firmware_mode or 'chFPGA')
+        # one persistent field the host owns, so the mode goes in there. The field holds 5
+        # characters ('corr8' fits, 'corr32' does not), hence C8 / C32 / C64.
+        label = {'corr8': 'C8', 'corr32': 'C32', 'corr64': 'C64'}.get(firmware_mode, (firmware_mode or 'chFPGA')[:5])
+        await self.tcpipe.oled_set_firmware_label_async(label)
         self.logger.info(
             f'{self!r}: Init phase OLED: {time.perf_counter() - t_oled:.3f} s')
         self.logger.info(

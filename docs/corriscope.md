@@ -167,7 +167,8 @@ ca = await FPGAArray('crs 127:1', mode='corr8', sync_method='local', stderr_log_
 `ca.ib` is the list of boards. `ca.ib[k]` is a `chFPGA` object. `ca.ib[k].chan[c]` holds
 the `FUNCGEN`, `FFT` and `SCALER` of input `c`. A flat input index is `k * 8 + c`.
 
-After the initialization, the OLED of each board shows the mode in the firmware label.
+After the initialization, the OLED of each board shows the mode in the firmware label: `C8`,
+`C32` or `C64`. The field holds 5 characters.
 
 ### 7.2 Get raw ADC data
 
@@ -336,6 +337,6 @@ it used. `tests/test_common_utils.py` tests them.
 - `corriscope/fpga_firmware/__init__.py` imports `chFPGA`. This registers the firmware class
   before `FPGAFirmware.get_firmware()` runs.
 - `set_channelizer()` raises `ValueError` when it gets a MGADC08-only keyword argument.
-- The OLED firmware label shows the firmware mode after the initialization.
+- The OLED firmware label shows the firmware mode (`C8`, `C32`, `C64`) after the initialization.
 - `raw_acq` finds the MAC address of the capture interface with `ifaddr` and `/sys/class/net`.
   pychfpga used `netifaces`, which has no binary wheels and needs a C compiler.
