@@ -404,6 +404,12 @@ class Motherboard(HardwareMap):
             self._cached_repr = None  # Clear on updates to account for the new parameters.
             return self
 
+    def delete_instance(self):
+        """Remove this board from the registry and from its crate's slot table."""
+        if self.crate and self.slot and self.crate.slot.get(self.slot) is self:
+            del self.crate.slot[self.slot]
+        super().delete_instance()
+
     # *************************
     # Board identification
     # *************************
