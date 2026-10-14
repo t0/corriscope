@@ -40,8 +40,6 @@
         "zeroconf==0.34.3",  # mDNS discovery
         ]
 
-# also needed for the jupyter notebooks in tests/: jupyter, ipympl
-
 [project.scripts]
     fpga_master = "corriscope.fpga_master:main"
     raw_acq = "corriscope.raw_acq.__main__:main"
@@ -64,6 +62,13 @@
 [project.optional-dependencies]
     test = [
         "pytest>=8,<9",
+        "pytest-asyncio",  # tests marked @pytest.mark.asyncio
+        ]
+    # The notebooks in tests/crs_corr_tests: `uv sync --extra notebooks`
+    notebooks = [
+        "jupyterlab",
+        "ipympl",  # %matplotlib ipympl
+        "tqdm",
         ]
 
 [tool.pytest.ini_options]

@@ -9,7 +9,8 @@ import sys
 import threading
 import time
 
-import netifaces
+import ifaddr
+import pathlib
 import numpy as np
 import psutil
 
@@ -537,17 +538,16 @@ class RawAcqReceiver(object):
             a string describing the mac address of the interface in the format
             'xx:xx:xx:xx:xx:xx'. *None* if no match was found.
         """
-        interfaces = netifaces.interfaces()
+        # ponytail: Linux only (/sys/class/net); netifaces needed a C compiler on every install.
         mac_list = []
-        for interface in interfaces:
-            afs = netifaces.ifaddresses(interface)
-            if netifaces.AF_INET not in afs or netifaces.AF_LINK not in afs:
+        for adapter in ifaddr.get_adapters():
+            if not any(ip.ip == if_addr for ip in adapter.ips if isinstance(ip.ip, str)):
                 continue
-            self.log.debug(f'checking interface {interface} with AF {afs}')
-            ips = [af for af in afs[netifaces.AF_INET] if af['addr'] == if_addr]
-            if ips:
-                for eth_if in afs[netifaces.AF_LINK]:
-                    mac_list.append(eth_if['addr'])
+            self.log.debug(f'checking interface {adapter.name} with ips {[ip.ip for ip in adapter.ips]}')
+            try:
+                mac_list.append(pathlib.Path(f'/sys/class/net/{adapter.name}/address').read_text().strip())
+            except OSError:
+                continue
         if len(mac_list) > 1:
             raise RuntimeError('Multiple MAC addresses were found to be associated with the same IP address')
         if mac_list:
