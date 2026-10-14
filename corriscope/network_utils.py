@@ -293,7 +293,7 @@ def verify_network_settings(interface: str = None) -> Tuple[bool, List[str], Lis
     is_jumbo, current_mtu = check_interface_mtu(interface)
     if not is_jumbo:
         errors.append(f"Interface {interface} MTU is {current_mtu}, should be >= 9000 for jumbo frames")
-        fix_commands.append(f"sudo ifconfig {interface} mtu 9000")
+        fix_commands.append(f"sudo ip link set dev {interface} mtu 9000")
     
     # Check UDP buffer settings
     buffer_settings = check_udp_buffer_settings()
@@ -349,3 +349,28 @@ def show_network_status(interface: str = None) -> None:
         else:
             sysctl_name = f'net.core.{param}' if param.startswith('rmem') else f'net.ipv4.{param}'
             print(f"  {status} {sysctl_name}: {current} (required: >= {required})")
+
+
+def main(argv=None):
+    """``python -m corriscope.network_utils [--status] [--interface IFACE]``: print the jumbo-frame
+    and UDP-buffer status, then the ``sudo`` commands that fix what is wrong. Exit code 1 if anything
+    is wrong."""
+    import argparse
+    import sys
+    parser = argparse.ArgumentParser(description='Check the capture interface for CRS UDP data.')
+    parser.add_argument('--status', action='store_true', help='print the status (default action)')
+    parser.add_argument('--interface', help='check only this interface (default: all)')
+    args = parser.parse_args(argv)
+    show_network_status(args.interface)
+    all_ok, errors, fix_commands = verify_network_settings(args.interface)
+    if all_ok:
+        print('\nAll settings are OK.')
+        return 0
+    print('\nFix with:')
+    for cmd in fix_commands:
+        print(f'  {cmd}')
+    return 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -73,7 +73,7 @@ The modes are rows of the table `chFPGA.PLATFORM_SUPPORT` in
 | `calculate_gains` | `corriscope/calculate_gains.py` | Computes digital gains from `raw_acq` data. |
 | `digital_gain` | `corriscope/digital_gain.py` | HDF5 archive of the programmed digital gains. |
 | `gps` | `corriscope/gps.py` | REST server for the TM-4D GPS receiver that gives IRIG-B time. |
-| `network_utils` | `corriscope/network_utils.py` | Checks and sets the capture interface. |
+| `network_utils` | `corriscope/network_utils.py` | Checks the jumbo-frame and UDP-buffer settings of the capture interface. |
 | `pocket_correlator` | `corriscope/pocket_correlator.py` | An older single-board application. See section 9. |
 | scripts | `scripts/` | Debug helpers for UDP capture and TCPipe logs. |
 
