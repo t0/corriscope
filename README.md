@@ -29,11 +29,21 @@ The reference environment is a [uv](https://docs.astral.sh/uv/) virtual environm
    git lfs install
    ```
 
-3. Clone the repository and go to its root folder:
+3. Clone the repository and go to its root folder. The CRS code is on the branch
+   `crs-corr-unified`. The branch `main` is the old pocket-correlator code and has no
+   bitstreams.
 
    ```bash
-   git clone git@github.com:t0/corriscope.git
+   git clone -b crs-corr-unified git@github.com:t0/corriscope.git
    cd corriscope
+   ```
+
+   If you have a clone on `main`, change the branch:
+
+   ```bash
+   git fetch origin
+   git checkout crs-corr-unified
+   git lfs pull
    ```
 
 4. Make the environment. This command creates `.venv/` from `uv.lock`:
